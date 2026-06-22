@@ -1,0 +1,255 @@
+// register vx is 2 nibbles
+// register i is 3 nibbles
+// top left is (0,0), going right and down
+
+// REGISTERS
+// v0 is temp register
+// left paddle coordinates: (va, vb)
+// right paddle coordinates: (vc, vd)
+// puck coordinates: (v6, v7)
+// puck velocity: [v8, v9]
+// scoreboard: ve
+
+
+main()
+{
+    0x2F6()
+    
+    vb = 0x0C // left paddle y pos, defaults to 12
+    vc = 0x3F // right paddle x pos, always 63
+    vd = 0x0C // right paddle y pos, defaults to 12
+    
+    // draw paddles in middle of screen (y 12-18)
+    i = 0x2EA
+    draw at (va,vb): 0x80 0x80 0x80 0x80 0x80 0x80 // draw vertical line 6 pixels tall at left (left paddle)
+    draw at (vc,vd): 0x80 0x80 0x80 0x80 0x80 0x80 // draw vertical line 6 pixels tall at right (left paddle)
+    
+    // initialize ve and draw it
+    ve = 0x00
+    0x2D4()
+    
+    v6 = 0x03 // 3
+    v8 = 0x02 // 2
+    
+    /* SETUP NEW ROUND */
+    0x216:
+    v0 = 0x60 // 96
+    
+    delay = v0
+    
+    // wait 96 ticks (1.5s)
+    0x21A:
+    v0 = delay
+    if v0 != 0x00
+        goto 0x21A
+    
+    // randomize puck starting location
+    v7 = rand() & 0x17 (0001 0111)
+    v7 += 0x08 (1000) // force 4th bit to be 1
+    
+    v9 = 0xFF // 255 (-1)
+    i = 0x2F0
+    draw at (v6,v7): 0x80 // draw puck for left side at random
+    
+    /* GAME LOOP */
+    0x22A:
+    i = 0x2EA
+    draw at (va, vb): 0x80 0x80 0x80 0x80 0x80 0x80 // erase left paddle
+    draw at (vc, vd): 0x80 0x80 0x80 0x80 0x80 0x80 // erase right paddle
+    
+    // move left paddle up/down
+    v0 = 0x01
+    if isPressed(v0) // up
+        vb += 0xFE // subtract 2
+    v0 = 0x04
+    if isPressed(v0) // down
+        vb += 0x02
+    
+    // wrap vb to edges of screen
+    v0 = 0x1F (0001 1111)
+    vb = vb & v0
+    
+    draw at (va, vb): 0x80 0x80 0x80 0x80 0x80 0x80 // left paddle
+    
+    // move right paddle up/down
+    v0 = 0x0C
+    if isPressed(v0) // up
+        vd += 0xFE // subtract 2
+    v0 = 0x0D
+    if isPressed(v0) // down
+        vd += 0x02
+    
+    // wrap vd to edges of screen
+    v0 = 0x1F (0001 1111)
+    vd = vd & v0
+    
+    draw at (vc, vd): 0x80 0x80 0x80 0x80 0x80 0x80 // right paddle
+    
+    i = 0x2F0
+    draw at (v6, v7): 0x80 // erase puck
+    
+    // change puck position by velocity
+    v6 += v8
+    v7 += v9
+    
+    // wrap puck x coordinate to edges of screen
+    v0 = 0x3F (0011 1111)
+    v6 = v6 & v0
+    
+    // wrap puck y coordinate to edges of screen
+    v1 = 0x1F (0001 1111)
+    v7 = v7 & v1
+    
+    // puck hits left end of screen
+    if v6 == 0x00
+        goto 0x278
+    // puck hits right end of screen
+    if v6 == 0x3F
+        goto 0x282
+    
+    // RETURN TO GAME LOOP
+    // puck hits bottom screen, so velocity down
+    0x26C:
+    if v7 == 0x1F
+        v9 = 0xFF (-1)
+    // puck hits top screen, so velocity up
+    if v7 == 0x00
+        v9 = 0x01
+        
+    draw at (v6, v7): 0x80 // draw puck
+    
+    goto 0x22A
+    /* END GAME LOOP */
+    
+    // define constants for puck math
+    
+    /* PUCK HITS LEFT */
+    0x278:
+    v8 = 0x02 // reverse velocity (if hit)
+    v3 = 0x01 // increase right score (if miss)
+    v0 = v7
+    v0 -= vb (vf = 0x01 if vb>v0) // v0 is distance of puck from top of paddle
+    goto 0x28A
+    /* END PUCK HITS LEFT */
+    
+    /* PUCK HITS RIGHT */
+    0x282:
+    v8 = 0xFE (-2) // reverse velocity (if hit)
+    v3 = 0x0A (10) // increase left score (if miss)
+    v0 = v7
+    v0 -= vd (vf = 0x00 if vd>v0) // v0 is distance of puck from top of paddle
+    /* END PUCK HITS RIGHT */
+    
+    /* PUCK HITS (merged) */
+    0x28A:
+    if vf != 0x01
+        goto 0x2A2 // miss from above
+        
+    v1 = 0x02
+    v0 -= v1 (vf = 0x00 if if v1>v0) // distance from 2nd from top pixels of paddle
+    if vf != 0x01
+        goto 0x2BA // hit top 2 pixels of paddle
+        
+    v0 -= v1 (vf = 0x00 if if v1>v0) // distance from 4th from top pixels
+    if vf != 0x01
+        goto 0x2C8 // hit middle of paddle
+        
+    v0 -= v1 (vf = 0x00 if borrow occurs) // distance from bottom of paddle
+    if vf != 0x01
+        goto 0x2C2 // hit bottom of paddle
+    
+    /* MISS */
+    0x2A2:
+    // play sound for 20 ticks
+    v0 = 0x20
+    sound(v0)
+    0x2D4() // clear scoreboard
+    
+    ve += v3 // update score
+    0x2D4() // redraw scoreboard
+    
+    v6 = 0x3E // start right side if right scored
+    if v3 != 0x01
+        v6 = 0x03 // start left side if left scored
+        
+    v8 = 0xFE (-2) // start going left if right scored
+    if v3 != 0x01
+        v8 = 0x02 // start going right if left scored
+    
+    goto 0x216
+    /* END MISS */
+    
+    /* SPECIAL HIT */
+    // hit top 2 pixels of paddle
+    0x2BA:
+    v9 += 0xFF (-1)
+    
+    if v9 == 0xFE (-2)
+        v9 = 0xFF (-1)
+    
+    goto 0x2C8
+    
+    // hit bottom of paddle
+    0x2C2:
+    v9 += 0x01
+    if v9 == 0x02
+        v9 = 0x01
+        
+    /* END SPECIAL HIT */
+    
+    /* HIT */
+    0x2C8:
+    // pong!
+    v0 = 0x04
+    sound(v0)
+    
+    // move puck back in bounds
+    v6 += 0x01
+    if v6 == 0x40 // max x coordinate is 3F, so beyond edge
+        v6 += 0xFE (-2) // go back
+    
+    goto 0x26C (0x2d2)
+}
+
+// draw scoreboard
+0x2D4()
+{
+    // convert ve to bcd and put that in v0-2 (v1 left score v2 right score)
+    i = 0x2F2
+    bcd ve -> 0x2F2,0x2F3,0x2F4
+    v0,v1,v2 <- 0x2F2,0x2F3,0x2F4
+    
+    // draw left number
+    i = sprite(v1)
+    v4 = 0x14 // 20
+    v5 = 0x00
+    draw at (v4,v5): sprite(v1)
+    
+    // draw right number
+    v4 += 0x15 // 21+20, move to top right ish
+    i = sprite(v2)
+    draw at (v4,v5): sprite(v2)
+    return
+}
+    
+
+// draw a center line
+0x2F6()
+{
+    vb = 0x20 // x coordinate
+    vc = 0x00 // y coordinate
+    
+    i = 0x2EA
+    
+    0x2FC:
+    draw at (vb, vc): 0x80 (10000000) // draw dot at top middle
+    	vf = 0x00
+    
+    vc += 0x01 (vc = 0x01)
+    
+    if vc != 0x20
+    	goto 0x2FC
+    
+    va = 0x00 // left paddle x pos, always 0
+    return
+}
