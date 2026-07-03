@@ -9,6 +9,10 @@ A from-scratch CHIP-8 interpreter written in C++, built to deepen my understandi
 - [ ] **Phase 2: Timers & Sound** (Implementing the 60Hz delay and sound timers)
 - [ ] **Phase 3: Graphics & Input** (Connecting the display buffer and keypad input)
 
+## System Design
+
+The architecture and technical specifications of this emulator are documented in the [Design Document](docs/design.md).
+
 ## Build Instructions
 
 This project uses CMake for out-of-source builds.
