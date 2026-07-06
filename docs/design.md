@@ -84,3 +84,19 @@ The decoding process executes in the following sequence:
 2. **Identification**: The decoder reads the first nibble of the 16-bit instruction. If the first nibble corresponds to an instruction family that uses trailing sub-opcodes (such as the `8` or `F` series), the decoder reads the final 1 or 2 nibbles and appends them to `id`
 3. **Extraction**: The decoder uses a switch statement with 5 cases based on the instruction type category. Inside each case, only the specific variables needed for that instruction type are extracted from the remaining bits and written to the object
 4. **Execution**: The completed object is passed to the execution stage
+
+### Execute
+
+#### Architecture
+The execution logic lives directly inside the CPU class.
+
+Most of the executor is a single, large switch statement that evaluates the `id` field of the instruction object.
+
+#### PC Management
+By default, the PC is incremented by 2 during the Fetch stage. The execution stage handles exceptions to this directly within the switch cases:
+* **Jumps**: The case overwrites the PC with the target address.
+* **Subroutines**: The case pushes the current PC onto the stack before overwriting the PC with the subroutine address.
+* **Skips**: If a conditional check passes (such as comparing two registers), the case adds 2 to the PC to skip the next instruction.
+
+#### Helper Functions and Modularity
+To maintain code readability, complex operations or instructions of similar functional types will be extracted from the switch statement into helper functions.
