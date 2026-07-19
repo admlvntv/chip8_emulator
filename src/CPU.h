@@ -22,10 +22,10 @@ public:
   void updateTimers(); // Decrements delay and sound timers. Call at 60Hz.
 
 private:
-  static constexpr size_t MEMORY_SIZE = 4096;
-  static constexpr size_t REGISTER_COUNT = 16;
-  static constexpr size_t STACK_DEPTH = 12;
-  static constexpr uint16_t ROM_START_ADDRESS = 0x200;
+  static constexpr size_t MEMORY_SIZE{4096};
+  static constexpr size_t REGISTER_COUNT{16};
+  static constexpr size_t STACK_DEPTH{12};
+  static constexpr uint16_t ROM_START_ADDRESS{0x200};
 
   // CPU cycle
   uint16_t fetch(); // Returns raw big-endian 16-bit opcode and advances PC by 2
@@ -42,10 +42,10 @@ private:
 
   uint16_t m_pc{ROM_START_ADDRESS};
   std::array<uint16_t, STACK_DEPTH> m_stack{};
-  int m_sp{0};
+  int m_sp{};
 
-  uint8_t delay_timer{0x00};
-  uint8_t sound_timer{0x00};
+  uint8_t delay_timer{};
+  uint8_t sound_timer{};
 };
 
 #endif // CHIP8_EMULATOR_CPU_H

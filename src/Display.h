@@ -5,8 +5,8 @@
 
 class Display {
 public:
-  static constexpr int WIDTH = 64;
-  static constexpr int HEIGHT = 32;
+  static constexpr int WIDTH{64};
+  static constexpr int HEIGHT{32};
 
   Display();
   ~Display();
