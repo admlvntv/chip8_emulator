@@ -1,23 +1,23 @@
 #include "CPU.h"
 
 namespace {
-  uint8_t get_x(uint16_t opcode) {
+  constexpr uint8_t get_x(uint16_t opcode) {
     return (opcode & 0x0F00) >> 8;
   }
 
-  uint8_t get_y(uint16_t opcode) {
+  constexpr uint8_t get_y(uint16_t opcode) {
     return (opcode & 0x00F0) >> 4;
   }
 
-  uint8_t get_n(uint16_t opcode) {
+  constexpr uint8_t get_n(uint16_t opcode) {
     return opcode & 0x000F;
   }
 
-  uint8_t get_nn(uint16_t opcode) {
+  constexpr uint8_t get_nn(uint16_t opcode) {
     return opcode & 0x00FF;
   }
 
-  uint16_t get_nnn(uint16_t opcode) {
+  constexpr uint16_t get_nnn(uint16_t opcode) {
     return opcode & 0x0FFF;
   }
 }
