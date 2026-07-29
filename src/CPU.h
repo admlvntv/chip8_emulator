@@ -29,8 +29,7 @@ private:
 
   // CPU cycle
   uint16_t fetch(); // Returns raw big-endian 16-bit opcode and advances PC by 2
-  Instruction decode(uint16_t opcode) const;
-  void execute(const Instruction& instr, Display& display);
+  void execute(uint16_t opcode, Display &display);
 
   // Initialize memory with fonts
   void load_fontset();
