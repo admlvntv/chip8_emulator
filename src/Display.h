@@ -1,7 +1,7 @@
 #ifndef CHIP8_EMULATOR_DISPLAY_H
 #define CHIP8_EMULATOR_DISPLAY_H
 
-#include <cstdint>
+#include <array>
 
 class Display {
 public:
@@ -9,7 +9,7 @@ public:
   static constexpr int HEIGHT{32};
 
   Display();
-  ~Display();
+  virtual ~Display() = default;
 
   void clear();
 
@@ -17,6 +17,11 @@ public:
   bool write_pixel(int x, int y);
 
   uint8_t get_pixel(int x, int y) const;
+
+  virtual void render() const = 0;
+
+protected:
+  std::array<uint8_t, WIDTH * HEIGHT> m_pixels{};
 };
 
 #endif // CHIP8_EMULATOR_DISPLAY_H

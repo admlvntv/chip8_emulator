@@ -1,7 +1,7 @@
 #ifndef CHIP8_EMULATOR_CPU_H
 #define CHIP8_EMULATOR_CPU_H
 
-#include "display.h"
+#include "Display.h"
 #include <array>
 #include <string_view>
 
