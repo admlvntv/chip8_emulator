@@ -7,13 +7,6 @@
 
 class CPU {
 public:
-  struct Instruction {
-    int id{}; // Internal identifier for execution mapping (1st and sometimes last nibble)
-    uint8_t reg_x{}; // VX register index (second nibble)
-    uint8_t reg_y{}; // VY register index (third nibble)
-    uint16_t input{}; // Holds immediate values: NNN (12-bit), NN (8-bit), or N (4-bit)
-  };
-
   CPU();
 
   void load_rom(std::string_view filepath); // Loads ROM into memory at 0x200
