@@ -1,9 +1,35 @@
 #include "CPU.h"
 
 #include <fstream>
+#include <stdexcept>
 
 CPU::CPU() {
   load_fontset();
+}
+
+void CPU::load_rom(const std::string& filepath) {
+  // Open at end so tellg() returns ROM size immediately
+  std::ifstream rom_file(filepath, std::ios::binary | std::ios::ate);
+  if (!rom_file.is_open()) {
+    throw std::runtime_error("Failed to open ROM file");
+  }
+
+  const std::streamsize rom_size{rom_file.tellg()};
+  if (rom_size < 0) {
+    throw std::runtime_error("Failed to read ROM size");
+  }
+
+  // ROM data is loaded at 0x200, so only memory from 0x200-0xFFF is available
+  constexpr size_t max_rom_size{MEMORY_SIZE - ROM_START_ADDRESS};
+  if (static_cast<size_t>(rom_size) > max_rom_size) {
+    throw std::runtime_error("ROM is too large to fit in memory");
+  }
+
+  // Rewind and copy raw bytes into memory
+  rom_file.seekg(0, std::ios::beg);
+  if (!rom_file.read(reinterpret_cast<char*>(m_memory.data() + ROM_START_ADDRESS), rom_size)) {
+    throw std::runtime_error("Failed to read ROM file");
+  }
 }
 
 void CPU::load_fontset() {

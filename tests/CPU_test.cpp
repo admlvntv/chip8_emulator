@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include "../src/CPU.h"
 #include "../src/Display.h"
+#include <filesystem>
+#include <fstream>
 #include <vector>
 
 class CPUForTesting : public CPU {
@@ -163,4 +165,44 @@ TEST_F(CPUTest, FetchThrowsWhenOutOfBounds) {
 TEST_F(CPUTest, ExecuteThrowsOnUnknownOpcode) {
     EXPECT_THROW(cpu.execute(0x0000, display), std::invalid_argument);
     EXPECT_THROW(cpu.execute(0xE000, display), std::invalid_argument);
+}
+
+TEST_F(CPUTest, LoadRomLoadsBytesAtRomStartAddress) {
+    const auto rom_path{ std::filesystem::temp_directory_path() / "chip8_test_rom.ch8" };
+    {
+        // Create a tiny fake ROM file on disk so load_rom reads real binary input
+        std::ofstream rom_file(rom_path, std::ios::binary);
+        ASSERT_TRUE(rom_file.is_open());
+        const std::vector<uint8_t> rom_data{0x12, 0x34, 0xAB, 0xCD};
+        rom_file.write(reinterpret_cast<const char*>(rom_data.data()), static_cast<std::streamsize>(rom_data.size()));
+    }
+
+    cpu.load_rom(rom_path.string());
+
+    // ROM bytes should be copied into RAM starting at 0x200
+    EXPECT_EQ(cpu.m_memory[cpu.ROM_START_ADDRESS], 0x12);
+    EXPECT_EQ(cpu.m_memory[cpu.ROM_START_ADDRESS + 1], 0x34);
+    EXPECT_EQ(cpu.m_memory[cpu.ROM_START_ADDRESS + 2], 0xAB);
+    EXPECT_EQ(cpu.m_memory[cpu.ROM_START_ADDRESS + 3], 0xCD);
+
+    std::filesystem::remove(rom_path);
+}
+
+TEST_F(CPUTest, LoadRomThrowsWhenFileDoesNotExist) {
+    EXPECT_THROW(cpu.load_rom("/tmp/does_not_exist_chip8_rom.ch8"), std::runtime_error);
+}
+
+TEST_F(CPUTest, LoadRomThrowsWhenRomTooLarge) {
+    const auto rom_path{ std::filesystem::temp_directory_path() / "chip8_test_large_rom.ch8" };
+    {
+        std::ofstream rom_file(rom_path, std::ios::binary);
+        ASSERT_TRUE(rom_file.is_open());
+        // Make a ROM 1 byte larger than available program memory to trigger size check.
+        std::vector<uint8_t> rom_data(cpu.MEMORY_SIZE - cpu.ROM_START_ADDRESS + 1, 0xFF);
+        rom_file.write(reinterpret_cast<const char*>(rom_data.data()), static_cast<std::streamsize>(rom_data.size()));
+    }
+
+    EXPECT_THROW(cpu.load_rom(rom_path.string()), std::runtime_error);
+
+    std::filesystem::remove(rom_path);
 }

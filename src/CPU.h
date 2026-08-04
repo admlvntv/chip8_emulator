@@ -9,7 +9,7 @@ class CPU {
 public:
   CPU();
 
-  void load_rom(std::string_view filepath); // Loads ROM into memory at 0x200
+  void load_rom(const std::string& filepath); // Loads ROM into memory at 0x200
 
   void cycle(Display& display); // Main CPU cycle
   void updateTimers(); // Decrements delay and sound timers. Call at 60Hz.
