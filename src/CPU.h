@@ -4,6 +4,7 @@
 #include "Display.h"
 #include <array>
 #include <string_view>
+#include <cstdint>
 
 class CPU {
 public:
