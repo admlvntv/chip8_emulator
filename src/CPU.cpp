@@ -175,3 +175,7 @@ void CPU::execute(uint16_t opcode, Display &display) {
     throw std::invalid_argument("Unknown opcode prefix");
   }
 }
+
+void CPU::cycle(Display &display) {
+  execute(fetch(), display);
+}
