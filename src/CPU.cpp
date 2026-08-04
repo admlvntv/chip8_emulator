@@ -31,18 +31,18 @@ uint16_t CPU::fetch() {
   // Combine current and next byte
   uint8_t high_byte{ m_memory[m_pc] };
   uint8_t low_byte{ m_memory[m_pc+1] };
-  uint16_t opcode = { static_cast<uint16_t>((high_byte << 8) | low_byte) };
+  uint16_t opcode{ static_cast<uint16_t>((high_byte << 8) | low_byte) };
   m_pc += 2;
   return opcode;
 }
 
 void CPU::execute(uint16_t opcode, Display &display) {
   const int id{ (opcode & 0xF000) >> 12 };
-  const uint8_t x { get_x(opcode) };
-  const uint8_t y { get_y(opcode) };
-  const uint8_t n { get_n(opcode) };
-  const uint8_t nn { get_nn(opcode) };
-  const uint16_t nnn { get_nnn(opcode) };
+  const uint8_t x{ get_x(opcode) };
+  const uint8_t y{ get_y(opcode) };
+  const uint8_t n{ get_n(opcode) };
+  const uint8_t nn{ get_nn(opcode) };
+  const uint16_t nnn{ get_nnn(opcode) };
 
   switch (id) {
   case 0x0: {
