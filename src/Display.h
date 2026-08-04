@@ -2,6 +2,7 @@
 #define CHIP8_EMULATOR_DISPLAY_H
 
 #include <array>
+#include <cstdint>
 
 class Display {
 public:
