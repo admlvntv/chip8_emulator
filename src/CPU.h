@@ -38,6 +38,8 @@ private:
 
   uint8_t delay_timer{};
   uint8_t sound_timer{};
+
+  friend class CPUForTesting;
 };
 
 #endif // CHIP8_EMULATOR_CPU_H
