@@ -179,3 +179,7 @@ void CPU::execute(uint16_t opcode, Display &display) {
 void CPU::cycle(Display &display) {
   execute(fetch(), display);
 }
+
+void CPU::updateTimers() {
+  // TODO: implement
+}
