@@ -5,9 +5,10 @@ A from-scratch CHIP-8 interpreter written in C++, built to deepen my understandi
 ## Development Roadmap
 
 - [x] **Phase 0: Architecture Research** (Manual decompilation and opcode mapping) [see analysis](research/pong_analysis.md)
-- [ ] **Phase 1: Core CPU & Memory** (Implementing the fetch-decode-execute cycle, registers, and RAM)
-- [ ] **Phase 2: Timers & Sound** (Implementing the 60Hz delay and sound timers)
-- [ ] **Phase 3: Graphics & Input** (Connecting the display buffer and keypad input)
+- [x] **Phase 1: Terminal Foundation** (Core CPU, Memory, and Terminal-based display rendering)
+- [ ] **Phase 2: Complete Opcode Set** (Implementing all 35 CHIP-8 opcodes, timers, and sound)
+- [ ] **Phase 3: GUI & Input** (SDL/Graphics library integration and keypad support)
+- [ ] **Phase 4: Optimization & Compatibility** (Super-CHIP support, quirks toggles, and performance tuning)
 
 ## System Design
 
@@ -18,19 +19,25 @@ The architecture and technical specifications of this emulator are documented in
 This project uses CMake for out-of-source builds.
 
 ### Prerequisites
-* A C++ compiler
-* CMake (4.2 or higher)
-* *(Note: Graphics library dependencies will be listed here once Phase 3 begins)*
+* A C++ compiler (supporting C++17 or later)
+* CMake (3.10 or higher)
 
 ### Compiling
 To build the emulator from the root directory:
 
 ```bash
-TODO
+mkdir build
+cd build
+cmake ..
+make
 ```
 
 ### Running a ROM
 ```bash
-TODO
+./chip8_emulator <path_to_rom> [frequency_hz]
+```
+Example:
+```bash
+./chip8_emulator ../roms/1-chip8-logo.ch8 500
 ```
 

@@ -12,8 +12,8 @@
 
 ### Display
 * **Size**: 64 x 32 pixels monochrome.
-* **Refresh Rate**: 60 Hz (or updated only when a draw `DXYN` instruction executes).
-* **Implementation**: Graphics library (SDL?).
+* **Refresh Rate**: 60 Hz.
+* **Implementation**: Currently uses `TerminalDisplay` (ANSI escape codes). Future implementation will use a graphics library (SDL) for Phase 3.
 
 ### Program Counter (PC)
 * **Purpose**: Points to the current instruction in memory.
@@ -48,47 +48,34 @@
 ## Fetch/Decode/Execute Loop
 
 The emulator execution follows this sequence during each cycle:
-1. **Fetch**: Read the instruction from memory at the current PC.
-2. **Decode**: Translate the raw instruction bits into an instruction object.
-3. **Execute**: Perform the operation specified by the object.
-4. **Delay**: Wait for the next loop cycle.
+1. **Fetch**: Read the instruction from memory at the current PC and advance the PC.
+2. **Execute**: Decode the raw instruction bits and perform the operation.
 
-*Note: Target clock speed ranges from 1 MHz to 4 MHz based on the OG hardware. Clock speed and ROM path will be handled via user input.*
+*Note: Target clock speed ranges from 500 Hz to 1000 Hz for modern implementations. Clock speed and ROM path are handled via command-line arguments.*
 
 ### Fetch
-1. **Combine Bytes**: Instructions are two bytes wide. Read the byte at the current PC and the next byte, then combine them into a single 16-bit instruction.
-2. **Advance Pointer**: Increment the PC by 2.
-
-### Decode
-
-#### Instruction Representation
-Every instruction is decoded into a container object which holds the components of the instruction to be read by the executor. Unused variables default to `0xFF`
-
-The instruction object contains the following fields:
-* `id`: An integer representing the unique operation identifier.
-* `reg_x`: An integer representing the first register index (0–15), or `0xFF` if unused.
-* `reg_y`: An integer representing the second register index (0–15), or `0xFF` if unused.
-* `input`: A variable-width integer (4, 8, or 12 bits) holding raw numeric data or addresses.
-
-#### Instruction Types
-The decoder handles 5 categories of instructions:
-* **No inputs**: e.g., `00E0`
-* **Address input**: e.g., `1NNN`
-* **Register input**: e.g., `5XY0`
-* **Register and value input**: e.g., `6XYN`
-* **Split opcode input**: Instructions with identifiers at both the start and end, e.g., `8XY1`, `8XY2`.
-
-#### Decoding Workflow
-The decoding process executes in the following sequence:
-1. **Initialization**: An instruction object is created. `reg_x`, `reg_y`, and `input` are initialized to `0xFF`.
-2. **Identification**: The decoder reads the first nibble of the 16-bit instruction. If the first nibble corresponds to an instruction family that uses trailing sub-opcodes (such as the `8` or `F` series), the decoder reads the final 1 or 2 nibbles and appends them to `id`
-3. **Extraction**: The decoder uses a switch statement with 5 cases based on the instruction type category. Inside each case, only the specific variables needed for that instruction type are extracted from the remaining bits and written to the object
-4. **Execution**: The completed object is passed to the execution stage
+1. **Combine Bytes**: Instructions are two bytes wide (big-endian). The `fetch()` method reads the byte at the current `m_pc` and the next byte, then combines them into a single 16-bit opcode.
+2. **Advance Pointer**: Increment the `m_pc` by 2.
 
 ### Execute
 
-#### Architecture
-The execution logic lives directly inside the CPU class.
+#### Decode
+Opcodes are decoded on-the-fly using bitwise masks and shifts. The following helper functions are used to extract specific parts of the 16-bit instruction:
+* `id`: `(opcode & 0xF000) >> 12` (The first nibble, used for the main instruction switch).
+* `x`: `(opcode & 0x0F00) >> 8` (The second nibble, usually a register index).
+* `y`: `(opcode & 0x00F0) >> 4` (The third nibble, usually a register index).
+* `n`: `opcode & 0x000F` (The fourth nibble, a 4-bit constant).
+* `nn`: `opcode & 0x00FF` (The last 8 bits, an 8-bit constant).
+* `nnn`: `opcode & 0x0FFF` (The last 12 bits, a memory address).
+
+#### Execution Workflow
+1. **Fetch**: The `cycle()` method calls `fetch()` to get the next opcode.
+2. **Dispatch**: The `execute()` method receives the raw opcode and uses a `switch` statement on the `id` (first nibble).
+3. **Sub-dispatch**: For instruction families with the same prefix (like `0x0`, `0x8`, `0xE`, or `0xF`), a nested `switch` on `nn` or `n` is used to identify the specific operation.
+4. **Operation**: The registers, memory, and display are modified according to the instruction logic.
+
+### Architecture
+The execution logic lives directly inside the `CPU` class.
 
 Most of the executor is a single, large switch statement that evaluates the `id` field of the instruction object.
 
