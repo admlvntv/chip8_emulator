@@ -86,6 +86,66 @@ TEST_F(CPUTest, Opcode1NNNJumpsToAddress) {
     EXPECT_EQ(cpu.m_pc, 0x250);
 }
 
+TEST_F(CPUTest, Opcode3XNNSkipsWhenEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[3] = 0x31;
+
+    cpu.execute(0x3331, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc + 2);
+}
+
+TEST_F(CPUTest, Opcode3XNNDoesNotSkipWhenNotEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[3] = 0x32;
+
+    cpu.execute(0x3331, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, Opcode4XNNDoesNotSkipWhenEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[4] = 0x41;
+
+    cpu.execute(0x4441, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, Opcode4XNNSkipsWhenNotEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[4] = 0x42;
+
+    cpu.execute(0x4441, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc + 2);
+}
+
+TEST_F(CPUTest, Opcode5XY0SkipsWhenEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[1] = 0x51;
+    cpu.m_V[2] = 0x51;
+
+    cpu.execute(0x5120, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc + 2);
+}
+
+TEST_F(CPUTest, Opcode5XY0DoesNotSkipWhenNotEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[1] = 0x51;
+    cpu.m_V[2] = 0x52;
+
+    cpu.execute(0x5120, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, Opcode5XY0ThrowsOnInvalidSubOpcode) {
+    EXPECT_THROW(cpu.execute(0x5121, display), std::invalid_argument);
+}
+
 TEST_F(CPUTest, Opcode6XNNSetsRegister) {
     cpu.execute(0x62FF, display);
     EXPECT_EQ(cpu.m_V[2], 0xFF);
@@ -100,6 +160,30 @@ TEST_F(CPUTest, Opcode7XNNAddsToRegister) {
     cpu.m_V[3] = 0xFE;
     cpu.execute(0x7304, display);
     EXPECT_EQ(cpu.m_V[3], 0x02);
+}
+
+TEST_F(CPUTest, Opcode9XY0SkipsWhenNotEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[1] = 0x91;
+    cpu.m_V[2] = 0x92;
+
+    cpu.execute(0x9120, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc + 2);
+}
+
+TEST_F(CPUTest, Opcode9XY0DoesNotSkipWhenEqual) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[1] = 0x91;
+    cpu.m_V[2] = 0x91;
+
+    cpu.execute(0x9120, display);
+
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, Opcode9XY0ThrowsOnInvalidSubOpcode) {
+    EXPECT_THROW(cpu.execute(0x9121, display), std::invalid_argument);
 }
 
 TEST_F(CPUTest, OpcodeANNNSetsIRegister) {

@@ -127,12 +127,42 @@ void CPU::execute(uint16_t opcode, Display &display) {
     }
     break;
 
+  case 0x3:
+    if (m_V[x] == nn) {
+      m_pc += 2;
+    }
+    break;
+
+  case 0x4:
+    if (m_V[x] != nn) {
+      m_pc += 2;
+    }
+    break;
+
+  case 0x5:
+    if (n != 0x0) {
+      throw std::invalid_argument("Invalid sub opcode for 0x5");
+    }
+    if (m_V[x] == m_V[y]) {
+      m_pc += 2;
+    }
+    break;
+
   case 0x6:
     m_V[x] = nn;
     break;
 
   case 0x7:
     m_V[x] += nn;
+    break;
+
+  case 0x9:
+    if (n != 0x0) {
+      throw std::invalid_argument("Invalid sub opcode for 0x9");
+    }
+    if (m_V[x] != m_V[y]) {
+      m_pc += 2;
+    }
     break;
 
   case 0xA:
