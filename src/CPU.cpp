@@ -105,12 +105,17 @@ void CPU::execute(uint16_t opcode, Display &display) {
 
   switch (id) {
   case 0x0: {
-    switch (nn) {
-    case 0xE0:
+    switch (nnn) {
+    case 0x0E0:
       display.clear();
       break;
-    case 0xEE:
-      // TODO
+    case 0x0EE:
+      if (!m_stack.empty()) {
+        m_pc = m_stack.top();
+        m_stack.pop();
+      } else {
+        throw std::out_of_range("Cannot pop an empty stack");
+      }
       break;
     default:
       throw std::invalid_argument("Unknown 0x0 opcode");
@@ -120,6 +125,19 @@ void CPU::execute(uint16_t opcode, Display &display) {
 
   case 0x1:
     if (nnn >= ROM_START_ADDRESS && nnn <= MEMORY_SIZE) {
+      m_pc = nnn;
+    }
+    else {
+      throw std::invalid_argument("Invalid GOTO address");
+    }
+    break;
+
+  case 0x2:
+    if (nnn >= ROM_START_ADDRESS && nnn <= MEMORY_SIZE) {
+      if (m_stack.size() >= STACK_DEPTH) {
+        throw std::overflow_error("Stack overflow");
+      }
+      m_stack.push(m_pc);
       m_pc = nnn;
     }
     else {

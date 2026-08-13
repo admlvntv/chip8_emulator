@@ -12,11 +12,11 @@ public:
     using CPU::m_I;
     using CPU::m_pc;
     using CPU::m_stack;
-    using CPU::m_sp;
     using CPU::fetch;
     using CPU::execute;
     using CPU::MEMORY_SIZE;
     using CPU::ROM_START_ADDRESS;
+    using CPU::STACK_DEPTH;
 };
 
 class MockDisplay : public Display {
@@ -84,6 +84,75 @@ TEST_F(CPUTest, Opcode00E0ClearsDisplay) {
 TEST_F(CPUTest, Opcode1NNNJumpsToAddress) {
     cpu.execute(0x1250, display);
     EXPECT_EQ(cpu.m_pc, 0x250);
+}
+
+TEST_F(CPUTest, Opcode00EEReturnsFromSubroutine) {
+    cpu.m_stack.push(0x350);
+
+    cpu.execute(0x00EE, display);
+
+    EXPECT_EQ(cpu.m_pc, 0x350);
+    EXPECT_TRUE(cpu.m_stack.empty());
+}
+
+TEST_F(CPUTest, Opcode00EEThrowsWhenStackIsEmpty) {
+    EXPECT_TRUE(cpu.m_stack.empty());
+    EXPECT_THROW(cpu.execute(0x00EE, display), std::out_of_range);
+}
+
+TEST_F(CPUTest, Opcode2NNNPushesPCAndJumpsToAddress) {
+    uint16_t start_pc{cpu.m_pc};
+
+    cpu.execute(0x2300, display);
+
+    EXPECT_EQ(cpu.m_pc, 0x300);
+    ASSERT_FALSE(cpu.m_stack.empty());
+    EXPECT_EQ(cpu.m_stack.top(), start_pc);
+}
+
+TEST_F(CPUTest, Opcode2NNNThrowsOnInvalidAddress) {
+    EXPECT_THROW(cpu.execute(0x2100, display), std::invalid_argument);
+    EXPECT_TRUE(cpu.m_stack.empty());
+}
+
+TEST_F(CPUTest, Opcode2NNNThrowsOnStackOverflow) {
+    // Fill the stack to STACK_DEPTH
+    for (size_t i{0}; i < cpu.STACK_DEPTH; ++i) {
+        cpu.execute(0x2300, display);
+    }
+    EXPECT_EQ(cpu.m_stack.size(), cpu.STACK_DEPTH);
+
+    // One more call should overflow rather than grow the stack unbounded
+    EXPECT_THROW(cpu.execute(0x2300, display), std::overflow_error);
+    EXPECT_EQ(cpu.m_stack.size(), cpu.STACK_DEPTH);
+}
+
+TEST_F(CPUTest, Opcode2NNNThenOpcode00EERoundTripsToCallSite) {
+    uint16_t start_pc{cpu.m_pc};
+
+    cpu.execute(0x2400, display); // Call 0x400
+    EXPECT_EQ(cpu.m_pc, 0x400);
+
+    cpu.execute(0x00EE, display); // Return
+    EXPECT_EQ(cpu.m_pc, start_pc);
+    EXPECT_TRUE(cpu.m_stack.empty());
+}
+
+TEST_F(CPUTest, Opcode2NNNSupportsNestedCalls) {
+    uint16_t start_pc{cpu.m_pc};
+
+    cpu.execute(0x2300, display); // Call 0x300, pushes start_pc
+    uint16_t after_first_call{cpu.m_pc};
+    cpu.execute(0x2400, display); // Call 0x400, pushes after_first_call
+    EXPECT_EQ(cpu.m_pc, 0x400);
+    EXPECT_EQ(cpu.m_stack.size(), 2);
+
+    cpu.execute(0x00EE, display); // Return to after_first_call
+    EXPECT_EQ(cpu.m_pc, after_first_call);
+
+    cpu.execute(0x00EE, display); // Return to start_pc
+    EXPECT_EQ(cpu.m_pc, start_pc);
+    EXPECT_TRUE(cpu.m_stack.empty());
 }
 
 TEST_F(CPUTest, Opcode3XNNSkipsWhenEqual) {

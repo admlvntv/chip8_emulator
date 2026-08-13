@@ -3,7 +3,7 @@
 
 #include "Display.h"
 #include <array>
-#include <string_view>
+#include <stack>
 #include <cstdint>
 
 class CPU {
@@ -34,8 +34,7 @@ private:
   uint16_t m_I{};
 
   uint16_t m_pc{ROM_START_ADDRESS};
-  std::array<uint16_t, STACK_DEPTH> m_stack{};
-  int m_sp{};
+  std::stack<uint16_t> m_stack{};
 
   uint8_t delay_timer{};
   uint8_t sound_timer{};
