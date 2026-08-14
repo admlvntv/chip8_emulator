@@ -5,6 +5,7 @@
 #include <array>
 #include <stack>
 #include <cstdint>
+#include <string>
 
 class CPU {
 public:
