@@ -231,6 +231,143 @@ TEST_F(CPUTest, Opcode7XNNAddsToRegister) {
     EXPECT_EQ(cpu.m_V[3], 0x02);
 }
 
+TEST_F(CPUTest, Opcode8XY0SetsVxToVy) {
+    cpu.m_V[1] = 0x11;
+    cpu.m_V[2] = 0x22;
+
+    cpu.execute(0x8120, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0x22);
+}
+
+TEST_F(CPUTest, Opcode8XY1SetsVxToVxORVy) {
+    cpu.m_V[1] = 0b1010;
+    cpu.m_V[2] = 0b0101;
+
+    cpu.execute(0x8121, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b1111);
+}
+
+TEST_F(CPUTest, Opcode8XY2SetsVxToVxANDVy) {
+    cpu.m_V[1] = 0b1100;
+    cpu.m_V[2] = 0b1010;
+
+    cpu.execute(0x8122, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b1000);
+}
+
+TEST_F(CPUTest, Opcode8XY3SetsVxToVxXORVy) {
+    cpu.m_V[1] = 0b1100;
+    cpu.m_V[2] = 0b1010;
+
+    cpu.execute(0x8123, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b0110);
+}
+
+TEST_F(CPUTest, Opcode8XY4AddsVyToVxWithoutCarry) {
+    cpu.m_V[1] = 0x10;
+    cpu.m_V[2] = 0x05;
+
+    cpu.execute(0x8124, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0x15);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+}
+
+TEST_F(CPUTest, Opcode8XY4AddsVyToVxWithCarry) {
+    cpu.m_V[1] = 0xFE;
+    cpu.m_V[2] = 0x04;
+
+    cpu.execute(0x8124, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0x02); // wraps around mod 256
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+}
+
+TEST_F(CPUTest, Opcode8XY5SubtractsVyFromVxWithoutBorrow) {
+    cpu.m_V[1] = 0x10;
+    cpu.m_V[2] = 0x05;
+
+    cpu.execute(0x8125, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0x0B);
+    EXPECT_EQ(cpu.m_V[0xF], 1); // VX >= VY, no borrow
+}
+
+TEST_F(CPUTest, Opcode8XY5SubtractsVyFromVxWithBorrow) {
+    cpu.m_V[1] = 0x05;
+    cpu.m_V[2] = 0x10;
+
+    cpu.execute(0x8125, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0xF5); // wraps around
+    EXPECT_EQ(cpu.m_V[0xF], 0); // VX < VY, borrow occurred
+}
+
+TEST_F(CPUTest, Opcode8XY6ShiftsVyRightIntoVxAndSetsVFToShiftedOutBit) {
+    cpu.m_V[2] = 0b00000011; // least significant bit is 1
+
+    cpu.execute(0x8126, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b00000001);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+}
+
+TEST_F(CPUTest, Opcode8XY6ClearsVFWhenShiftedOutBitIsZero) {
+    cpu.m_V[2] = 0b00000010; // least significant bit is 0
+
+    cpu.execute(0x8126, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b00000001);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+}
+
+TEST_F(CPUTest, Opcode8XY7SetsVxToVyMinusVxWithoutBorrow) {
+    cpu.m_V[1] = 0x05;
+    cpu.m_V[2] = 0x10;
+
+    cpu.execute(0x8127, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0x0B);
+    EXPECT_EQ(cpu.m_V[0xF], 1); // VY >= VX, no borrow
+}
+
+TEST_F(CPUTest, Opcode8XY7SetsVxToVyMinusVxWithBorrow) {
+    cpu.m_V[1] = 0x10;
+    cpu.m_V[2] = 0x05;
+
+    cpu.execute(0x8127, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0xF5); // wraps around
+    EXPECT_EQ(cpu.m_V[0xF], 0); // VY < VX, borrow occurred
+}
+
+TEST_F(CPUTest, Opcode8XYEShiftsVyLeftIntoVxAndSetsVFToShiftedOutBit) {
+    cpu.m_V[2] = 0b11000000; // most significant bit is 1
+
+    cpu.execute(0x812E, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b10000000);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+}
+
+TEST_F(CPUTest, Opcode8XYEClearsVFWhenShiftedOutBitIsZero) {
+    cpu.m_V[2] = 0b01000000; // most significant bit is 0
+
+    cpu.execute(0x812E, display);
+
+    EXPECT_EQ(cpu.m_V[1], 0b10000000);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+}
+
+TEST_F(CPUTest, Opcode8XYNThrowsOnUnknownSubOpcode) {
+    EXPECT_THROW(cpu.execute(0x8128, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x8129, display), std::invalid_argument);
+}
+
 TEST_F(CPUTest, Opcode9XY0SkipsWhenNotEqual) {
     uint16_t start_pc{cpu.m_pc};
     cpu.m_V[1] = 0x91;

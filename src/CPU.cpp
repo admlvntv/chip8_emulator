@@ -174,6 +174,73 @@ void CPU::execute(uint16_t opcode, Display &display) {
     m_V[x] += nn;
     break;
 
+  case 0x8:
+    switch (n) {
+    case 0x0:
+      m_V[x] = m_V[y];
+      break;
+
+    case 0x1:
+      m_V[x] = m_V[x] | m_V[y];
+      break;
+
+    case 0x2:
+      m_V[x] = m_V[x] & m_V[y];
+      break;
+
+    case 0x3:
+      m_V[x] = m_V[x] ^ m_V[y];
+      break;
+
+    case 0x4:
+      // Set VF flag if VX+VY > 255
+      if (m_V[y] > UINT8_MAX - m_V[x]) {
+        m_V[0xF] = 1;
+      }
+      else {
+        m_V[0xF] = 0;
+      }
+      m_V[x] += m_V[y];
+      break;
+
+    case 0x5:
+      // Set VF flag if minuend (first operand) >= subtrahend (second operand)
+      if (m_V[x] >= m_V[y]) {
+        m_V[0xF] = 1;
+      }
+      else {
+        m_V[0xF] = 0;
+      }
+      m_V[x] -= m_V[y];
+      break;
+
+    case 0x6:
+      // TODO: add quirk for SUPER-CHIP
+      m_V[0xF] = m_V[y] & 0b00000001;
+      m_V[x] = m_V[y] >> 1;
+      break;
+    case 0x7:
+      // Set VF flag if minuend (first operand) >= subtrahend (second operand)
+      if (m_V[y] >= m_V[x]) {
+        m_V[0xF] = 1;
+      }
+      else {
+        m_V[0xF] = 0;
+      }
+      m_V[x] = m_V[y] - m_V[x];
+      break;
+
+    case 0xE:
+      // TODO: add quirk for SUPER-CHIP
+      m_V[0xF] = (m_V[y] & 0b10000000) >> 7;
+      m_V[x] = m_V[y] << 1;
+      break;
+
+    default:
+      throw std::invalid_argument("Unknown 0x8 opcode");
+    }
+    break;
+
   case 0x9:
     if (n != 0x0) {
       throw std::invalid_argument("Invalid sub opcode for 0x9");
