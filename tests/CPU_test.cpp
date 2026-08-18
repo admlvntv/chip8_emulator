@@ -403,6 +403,41 @@ TEST_F(CPUTest, OpcodeBNNNJumpsToAddressPlusV0) {
     EXPECT_EQ(cpu.m_pc, 0x310);
 }
 
+TEST_F(CPUTest, OpcodeCXNNMasksRandomValueWithNN) {
+    // NN = 0x00 forces the result to 0
+    cpu.execute(0xC500, display);
+    EXPECT_EQ(cpu.m_V[5], 0x00);
+
+    // NN = 0x0F should always clear the upper nibble
+    for (int i{0}; i < 100; ++i) {
+        cpu.execute(0xC50F, display);
+        EXPECT_EQ(cpu.m_V[5] & 0xF0, 0x00);
+    }
+
+    // NN = 0xF0 should always clear the lower nibble
+    for (int i{0}; i < 100; ++i) {
+        cpu.execute(0xC5F0, display);
+        EXPECT_EQ(cpu.m_V[5] & 0x0F, 0x00);
+    }
+}
+
+TEST_F(CPUTest, OpcodeCXNNProducesVaryingValues) {
+    std::vector<uint8_t> results;
+    for (int i{0}; i < 100; ++i) {
+        cpu.execute(0xC6FF, display);
+        results.push_back(cpu.m_V[6]);
+    }
+
+    bool all_same{true};
+    for (uint8_t value : results) {
+        if (value != results[0]) {
+            all_same = false;
+            break;
+        }
+    }
+    EXPECT_FALSE(all_same);
+}
+
 TEST_F(CPUTest, OpcodeDXYNDrawsSpriteAndSetsCollision) {
     // Set I to a simple sprite (single pixel at top left)
     cpu.m_I = 0x300;

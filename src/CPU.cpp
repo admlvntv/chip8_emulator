@@ -1,6 +1,7 @@
 #include "CPU.h"
 
 #include <fstream>
+#include <random>
 #include <stdexcept>
 
 CPU::CPU() {
@@ -263,6 +264,13 @@ void CPU::execute(uint16_t opcode, Display &display) {
     else {
       throw std::invalid_argument("Invalid GOTO address");
     }
+    break;
+  }
+
+  case 0xC: {
+    static std::mt19937 rng{ std::random_device{}() };
+    static std::uniform_int_distribution<uint8_t> byte_dist(0, UINT8_MAX);
+    m_V[x] = byte_dist(rng) & nn;
     break;
   }
 
