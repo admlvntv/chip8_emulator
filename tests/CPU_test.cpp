@@ -397,6 +397,12 @@ TEST_F(CPUTest, OpcodeANNNSetsIRegister) {
     EXPECT_EQ(cpu.m_I, 0xABC);
 }
 
+TEST_F(CPUTest, OpcodeBNNNJumpsToAddressPlusV0) {
+    cpu.m_V[0] = 0x10;
+    cpu.execute(0xB300, display);
+    EXPECT_EQ(cpu.m_pc, 0x310);
+}
+
 TEST_F(CPUTest, OpcodeDXYNDrawsSpriteAndSetsCollision) {
     // Set I to a simple sprite (single pixel at top left)
     cpu.m_I = 0x300;

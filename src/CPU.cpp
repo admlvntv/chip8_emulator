@@ -124,7 +124,7 @@ void CPU::execute(uint16_t opcode, Display &display) {
   }
 
   case 0x1:
-    if (nnn >= ROM_START_ADDRESS && nnn <= MEMORY_SIZE) {
+    if (nnn >= ROM_START_ADDRESS && nnn < MEMORY_SIZE) {
       m_pc = nnn;
     }
     else {
@@ -133,7 +133,7 @@ void CPU::execute(uint16_t opcode, Display &display) {
     break;
 
   case 0x2:
-    if (nnn >= ROM_START_ADDRESS && nnn <= MEMORY_SIZE) {
+    if (nnn >= ROM_START_ADDRESS && nnn < MEMORY_SIZE) {
       if (m_stack.size() >= STACK_DEPTH) {
         throw std::overflow_error("Stack overflow");
       }
@@ -253,6 +253,18 @@ void CPU::execute(uint16_t opcode, Display &display) {
   case 0xA:
     m_I = nnn;
     break;
+
+  case 0xB: {
+    // TODO: add quirk for SUPER-CHIP (BXNN)
+    uint16_t jump_address{ static_cast<uint16_t>(nnn + m_V[0x0]) };
+    if (jump_address >= ROM_START_ADDRESS && jump_address < MEMORY_SIZE) {
+      m_pc = jump_address;
+    }
+    else {
+      throw std::invalid_argument("Invalid GOTO address");
+    }
+    break;
+  }
 
   case 0xD: {
     uint8_t sprite_height{n};
