@@ -21,6 +21,8 @@ private:
   static constexpr size_t REGISTER_COUNT{16};
   static constexpr size_t STACK_DEPTH{12};
   static constexpr uint16_t ROM_START_ADDRESS{0x200};
+  static constexpr uint16_t FONT_START_ADDRESS{0x50};
+  static constexpr uint8_t FONT_CHAR_SIZE{5}; // Bytes per hex digit sprite
 
   // CPU cycle
   uint16_t fetch(); // Returns raw big-endian 16-bit opcode and advances PC by 2

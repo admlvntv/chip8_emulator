@@ -18,6 +18,8 @@ public:
     using CPU::MEMORY_SIZE;
     using CPU::ROM_START_ADDRESS;
     using CPU::STACK_DEPTH;
+    using CPU::FONT_START_ADDRESS;
+    using CPU::FONT_CHAR_SIZE;
 };
 
 class MockDisplay : public Display {
@@ -50,17 +52,16 @@ protected:
 };
 
 TEST_F(CPUTest, FontsetLoadedAtInitialization) {
-    // Fontset starts at 0x50
     // First char '0': 0xF0, 0x90, 0x90, 0x90, 0xF0
-    EXPECT_EQ(cpu.m_memory[0x50], 0xF0);
-    EXPECT_EQ(cpu.m_memory[0x51], 0x90);
-    EXPECT_EQ(cpu.m_memory[0x52], 0x90);
-    EXPECT_EQ(cpu.m_memory[0x53], 0x90);
-    EXPECT_EQ(cpu.m_memory[0x54], 0xF0);
-    
-    // Last char 'F': 0xF0, 0x80, 0xF0, 0x80, 0x80 (at 0x50 + 15*5)
-    EXPECT_EQ(cpu.m_memory[0x50 + 15*5], 0xF0);
-    EXPECT_EQ(cpu.m_memory[0x50 + 15*5+4], 0x80);
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS], 0xF0);
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS + 1], 0x90);
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS + 2], 0x90);
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS + 3], 0x90);
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS + 4], 0xF0);
+
+    // Last char 'F': 0xF0, 0x80, 0xF0, 0x80, 0x80
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS + 0xF * cpu.FONT_CHAR_SIZE], 0xF0);
+    EXPECT_EQ(cpu.m_memory[cpu.FONT_START_ADDRESS + 0xF * cpu.FONT_CHAR_SIZE + 4], 0x80);
 }
 
 TEST_F(CPUTest, FetchConstructsCorrectOpcodeAndAdvancesPC) {
@@ -499,6 +500,23 @@ TEST_F(CPUTest, OpcodeFX15SetsDelayTimerToVx) {
     cpu.m_V[2] = 0x43;
     cpu.execute(0xF215, display);
     EXPECT_EQ(cpu.m_delay_timer, 0x43);
+}
+
+TEST_F(CPUTest, OpcodeFX29SetsIToFontCharacterAddress) {
+    cpu.m_V[3] = 0x0;
+    cpu.execute(0xF329, display);
+    EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS); // 0 is the first character
+
+    cpu.m_V[3] = 0xF;
+    cpu.execute(0xF329, display);
+    EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS + 0xF * cpu.FONT_CHAR_SIZE); // F is the last character
+}
+
+TEST_F(CPUTest, OpcodeFX29OnlyUsesLowNibbleOfVx) {
+    // Upper nibble should be ignored, only digits 0-F are valid font characters
+    cpu.m_V[4] = 0xAB;
+    cpu.execute(0xF429, display);
+    EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS + 0xB * cpu.FONT_CHAR_SIZE);
 }
 
 TEST_F(CPUTest, OpcodeFXNNThrowsOnUnknownSubOpcode) {

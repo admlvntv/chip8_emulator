@@ -53,9 +53,9 @@ void CPU::load_fontset() {
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
   };
 
-  // Store fontset in memory starting at 0x50
+  // Store fontset in memory starting at FONT_START_ADDRESS
   for (size_t i{0}; i < fontset.size(); ++i) {
-    m_memory[0x50 + i] = fontset[i];
+    m_memory[FONT_START_ADDRESS + i] = fontset[i];
   }
 
 }
@@ -314,6 +314,11 @@ void CPU::execute(uint16_t opcode, Display &display) {
 
     case 0x15:
       m_delay_timer = m_V[x];
+      break;
+
+    case 0x29:
+      // Point I at the font sprite for the hex digit in VX's low nibble (digits 0-F only)
+      m_I = FONT_START_ADDRESS + (m_V[x] & 0x0F) * FONT_CHAR_SIZE;
       break;
 
     default:
