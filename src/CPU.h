@@ -37,8 +37,8 @@ private:
   uint16_t m_pc{ROM_START_ADDRESS};
   std::stack<uint16_t> m_stack{};
 
-  uint8_t delay_timer{};
-  uint8_t sound_timer{};
+  uint8_t m_delay_timer{};
+  uint8_t m_sound_timer{};
 
   friend class CPUForTesting;
 };

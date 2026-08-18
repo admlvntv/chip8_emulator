@@ -12,6 +12,7 @@ public:
     using CPU::m_I;
     using CPU::m_pc;
     using CPU::m_stack;
+    using CPU::m_delay_timer;
     using CPU::fetch;
     using CPU::execute;
     using CPU::MEMORY_SIZE;
@@ -486,6 +487,22 @@ TEST_F(CPUTest, OpcodeDXYNHandlesWrappingAndClipping) {
     EXPECT_EQ(display.get_pixel_at(3, 2), 1);
     EXPECT_EQ(display.get_pixel_at(2, 3), 1);
     EXPECT_EQ(display.get_pixel_at(3, 3), 1);
+}
+
+TEST_F(CPUTest, OpcodeFX07SetsVxToDelayTimer) {
+    cpu.m_delay_timer = 0x42;
+    cpu.execute(0xF107, display);
+    EXPECT_EQ(cpu.m_V[1], 0x42);
+}
+
+TEST_F(CPUTest, OpcodeFX15SetsDelayTimerToVx) {
+    cpu.m_V[2] = 0x43;
+    cpu.execute(0xF215, display);
+    EXPECT_EQ(cpu.m_delay_timer, 0x43);
+}
+
+TEST_F(CPUTest, OpcodeFXNNThrowsOnUnknownSubOpcode) {
+    EXPECT_THROW(cpu.execute(0xF000, display), std::invalid_argument);
 }
 
 TEST_F(CPUTest, FetchThrowsWhenOutOfBounds) {

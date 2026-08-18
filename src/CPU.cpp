@@ -306,6 +306,21 @@ void CPU::execute(uint16_t opcode, Display &display) {
     break;
   }
 
+  case 0xF:
+    switch (nn) {
+    case 0x07:
+      m_V[x] = m_delay_timer;
+      break;
+
+    case 0x15:
+      m_delay_timer = m_V[x];
+      break;
+
+    default:
+      throw std::invalid_argument("Unknown 0xF opcode");
+    }
+    break;
+
   default:
     throw std::invalid_argument("Unknown opcode prefix");
   }
@@ -316,5 +331,8 @@ void CPU::cycle(Display &display) {
 }
 
 void CPU::updateTimers() {
-  // TODO: implement
+  if (m_delay_timer > 0) {
+    m_delay_timer--;
+  }
+  // TODO: implement sound timer
 }
