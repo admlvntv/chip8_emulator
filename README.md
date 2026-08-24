@@ -6,7 +6,7 @@ A from-scratch CHIP-8 interpreter written in C++, built to deepen my understandi
 
 - [x] **Phase 0: Architecture Research** (Manual decompilation and opcode mapping) [see analysis](research/pong_analysis.md)
 - [x] **Phase 1: Terminal Foundation** (Core CPU, Memory, and Terminal-based display rendering)
-- [ ] **Phase 2: Complete Opcode Set** (Implementing all 35 CHIP-8 opcodes, timers, and sound)
+- [x] **Phase 2: Complete Opcode Set** (Implementing all 35 CHIP-8 opcodes, timers, and sound)
 - [ ] **Phase 3: GUI & Input** (SDL/Graphics library integration and keypad support)
 - [ ] **Phase 4: Optimization & Compatibility** (Super-CHIP support, quirks toggles, and performance tuning)
 
