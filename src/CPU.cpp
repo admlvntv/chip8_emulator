@@ -96,7 +96,7 @@ uint16_t CPU::fetch() {
   return opcode;
 }
 
-void CPU::execute(uint16_t opcode, Display &display) {
+void CPU::execute(uint16_t opcode, Display &display, const Keypad &keypad) {
   const int id{ (opcode & 0xF000) >> 12 };
   const uint8_t x{ get_x(opcode) };
   const uint8_t y{ get_y(opcode) };
@@ -361,8 +361,8 @@ void CPU::execute(uint16_t opcode, Display &display) {
   }
 }
 
-void CPU::cycle(Display &display) {
-  execute(fetch(), display);
+void CPU::cycle(Display &display, const Keypad &keypad) {
+  execute(fetch(), display, keypad);
 }
 
 void CPU::updateTimers() {

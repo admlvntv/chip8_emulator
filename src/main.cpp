@@ -1,4 +1,5 @@
 #include "CPU.h"
+#include "Keypad.h"
 #include "TerminalDisplay.h"
 
 #include <chrono>
@@ -28,6 +29,7 @@ int main(int argc, char* argv[]) {
   // Initialize hardware
   CPU cpu;
   TerminalDisplay display;
+  Keypad keypad; // TODO: No input backend yet, keys are never pressed until SDL support added
 
   cpu.load_rom(argv[1]);
 
@@ -44,7 +46,7 @@ int main(int argc, char* argv[]) {
     now = std::chrono::steady_clock::now();
 
     if (now >= next_cycle) {
-      cpu.cycle(display);
+      cpu.cycle(display, keypad);
       display.render();
       next_cycle += cycle_period;
       if (next_cycle < now) next_cycle = now; // resync, drop backlog

@@ -43,6 +43,27 @@
 * **Purpose**: 4x5 pixel sprite data representing hex characters 0 through F.
 * **Implementation**: Stored in the main memory array with locations defined by constants.
 
+### Keypad
+* **Purpose**: 16-key hex keypad (`0`-`F`), read by `EX9E`/`EXA1` (skip on key state) and `FX0A` (blocking wait for a keypress).
+* **Layout**: The physical COSMAC VIP layout is remapped to a modern keyboard as follows:
+
+  |     |     |     |     |
+  |-----|-----|-----|-----|
+  | `1` | `2` | `3` | `C` |
+  | `4` | `5` | `6` | `D` |
+  | `7` | `8` | `9` | `E` |
+  | `A` | `0` | `B` | `F` |
+
+  mapped to:
+
+  |     |     |     |     |
+  |-----|-----|-----|-----|
+  | `1` | `2` | `3` | `4` |
+  | `Q` | `W` | `E` | `R` |
+  | `A` | `S` | `D` | `F` |
+  | `Z` | `X` | `C` | `V` |
+* **Implementation**: `Keypad` holds a 16-entry boolean state array exposed through `press()`, `release()`, and `is_key_down()`. An input backend updates that state by calling `press()`/`release()` from its own event loop (SDL).
+
 ---
 
 ## Fetch/Decode/Execute Loop

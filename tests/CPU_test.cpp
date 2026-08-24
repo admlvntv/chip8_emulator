@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "../src/CPU.h"
 #include "../src/Display.h"
+#include "../src/Keypad.h"
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -43,6 +44,7 @@ class CPUTest : public testing::Test {
 protected:
     CPUForTesting cpu;
     MockDisplay display;
+    Keypad keypad;
 
     void set_memory(uint16_t address, const std::vector<uint8_t>& data) {
         for (size_t i{0}; i < data.size(); ++i) {
@@ -78,20 +80,20 @@ TEST_F(CPUTest, Opcode00E0ClearsDisplay) {
     display.write_pixel(0, 0);
     EXPECT_FALSE(display.is_cleared());
     
-    cpu.execute(0x00E0, display);
+    cpu.execute(0x00E0, display, keypad);
     
     EXPECT_TRUE(display.is_cleared());
 }
 
 TEST_F(CPUTest, Opcode1NNNJumpsToAddress) {
-    cpu.execute(0x1250, display);
+    cpu.execute(0x1250, display, keypad);
     EXPECT_EQ(cpu.m_pc, 0x250);
 }
 
 TEST_F(CPUTest, Opcode00EEReturnsFromSubroutine) {
     cpu.m_stack.push(0x350);
 
-    cpu.execute(0x00EE, display);
+    cpu.execute(0x00EE, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, 0x350);
     EXPECT_TRUE(cpu.m_stack.empty());
@@ -99,13 +101,13 @@ TEST_F(CPUTest, Opcode00EEReturnsFromSubroutine) {
 
 TEST_F(CPUTest, Opcode00EEThrowsWhenStackIsEmpty) {
     EXPECT_TRUE(cpu.m_stack.empty());
-    EXPECT_THROW(cpu.execute(0x00EE, display), std::out_of_range);
+    EXPECT_THROW(cpu.execute(0x00EE, display, keypad), std::out_of_range);
 }
 
 TEST_F(CPUTest, Opcode2NNNPushesPCAndJumpsToAddress) {
     uint16_t start_pc{cpu.m_pc};
 
-    cpu.execute(0x2300, display);
+    cpu.execute(0x2300, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, 0x300);
     ASSERT_FALSE(cpu.m_stack.empty());
@@ -113,29 +115,29 @@ TEST_F(CPUTest, Opcode2NNNPushesPCAndJumpsToAddress) {
 }
 
 TEST_F(CPUTest, Opcode2NNNThrowsOnInvalidAddress) {
-    EXPECT_THROW(cpu.execute(0x2100, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x2100, display, keypad), std::invalid_argument);
     EXPECT_TRUE(cpu.m_stack.empty());
 }
 
 TEST_F(CPUTest, Opcode2NNNThrowsOnStackOverflow) {
     // Fill the stack to STACK_DEPTH
     for (size_t i{0}; i < cpu.STACK_DEPTH; ++i) {
-        cpu.execute(0x2300, display);
+        cpu.execute(0x2300, display, keypad);
     }
     EXPECT_EQ(cpu.m_stack.size(), cpu.STACK_DEPTH);
 
     // One more call should overflow rather than grow the stack unbounded
-    EXPECT_THROW(cpu.execute(0x2300, display), std::overflow_error);
+    EXPECT_THROW(cpu.execute(0x2300, display, keypad), std::overflow_error);
     EXPECT_EQ(cpu.m_stack.size(), cpu.STACK_DEPTH);
 }
 
 TEST_F(CPUTest, Opcode2NNNThenOpcode00EERoundTripsToCallSite) {
     uint16_t start_pc{cpu.m_pc};
 
-    cpu.execute(0x2400, display); // Call 0x400
+    cpu.execute(0x2400, display, keypad); // Call 0x400
     EXPECT_EQ(cpu.m_pc, 0x400);
 
-    cpu.execute(0x00EE, display); // Return
+    cpu.execute(0x00EE, display, keypad); // Return
     EXPECT_EQ(cpu.m_pc, start_pc);
     EXPECT_TRUE(cpu.m_stack.empty());
 }
@@ -143,16 +145,16 @@ TEST_F(CPUTest, Opcode2NNNThenOpcode00EERoundTripsToCallSite) {
 TEST_F(CPUTest, Opcode2NNNSupportsNestedCalls) {
     uint16_t start_pc{cpu.m_pc};
 
-    cpu.execute(0x2300, display); // Call 0x300, pushes start_pc
+    cpu.execute(0x2300, display, keypad); // Call 0x300, pushes start_pc
     uint16_t after_first_call{cpu.m_pc};
-    cpu.execute(0x2400, display); // Call 0x400, pushes after_first_call
+    cpu.execute(0x2400, display, keypad); // Call 0x400, pushes after_first_call
     EXPECT_EQ(cpu.m_pc, 0x400);
     EXPECT_EQ(cpu.m_stack.size(), 2);
 
-    cpu.execute(0x00EE, display); // Return to after_first_call
+    cpu.execute(0x00EE, display, keypad); // Return to after_first_call
     EXPECT_EQ(cpu.m_pc, after_first_call);
 
-    cpu.execute(0x00EE, display); // Return to start_pc
+    cpu.execute(0x00EE, display, keypad); // Return to start_pc
     EXPECT_EQ(cpu.m_pc, start_pc);
     EXPECT_TRUE(cpu.m_stack.empty());
 }
@@ -161,7 +163,7 @@ TEST_F(CPUTest, Opcode3XNNSkipsWhenEqual) {
     uint16_t start_pc{cpu.m_pc};
     cpu.m_V[3] = 0x31;
 
-    cpu.execute(0x3331, display);
+    cpu.execute(0x3331, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc + 2);
 }
@@ -170,7 +172,7 @@ TEST_F(CPUTest, Opcode3XNNDoesNotSkipWhenNotEqual) {
     uint16_t start_pc{cpu.m_pc};
     cpu.m_V[3] = 0x32;
 
-    cpu.execute(0x3331, display);
+    cpu.execute(0x3331, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc);
 }
@@ -179,7 +181,7 @@ TEST_F(CPUTest, Opcode4XNNDoesNotSkipWhenEqual) {
     uint16_t start_pc{cpu.m_pc};
     cpu.m_V[4] = 0x41;
 
-    cpu.execute(0x4441, display);
+    cpu.execute(0x4441, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc);
 }
@@ -188,7 +190,7 @@ TEST_F(CPUTest, Opcode4XNNSkipsWhenNotEqual) {
     uint16_t start_pc{cpu.m_pc};
     cpu.m_V[4] = 0x42;
 
-    cpu.execute(0x4441, display);
+    cpu.execute(0x4441, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc + 2);
 }
@@ -198,7 +200,7 @@ TEST_F(CPUTest, Opcode5XY0SkipsWhenEqual) {
     cpu.m_V[1] = 0x51;
     cpu.m_V[2] = 0x51;
 
-    cpu.execute(0x5120, display);
+    cpu.execute(0x5120, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc + 2);
 }
@@ -208,28 +210,28 @@ TEST_F(CPUTest, Opcode5XY0DoesNotSkipWhenNotEqual) {
     cpu.m_V[1] = 0x51;
     cpu.m_V[2] = 0x52;
 
-    cpu.execute(0x5120, display);
+    cpu.execute(0x5120, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc);
 }
 
 TEST_F(CPUTest, Opcode5XY0ThrowsOnInvalidSubOpcode) {
-    EXPECT_THROW(cpu.execute(0x5121, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x5121, display, keypad), std::invalid_argument);
 }
 
 TEST_F(CPUTest, Opcode6XNNSetsRegister) {
-    cpu.execute(0x62FF, display);
+    cpu.execute(0x62FF, display, keypad);
     EXPECT_EQ(cpu.m_V[2], 0xFF);
 }
 
 TEST_F(CPUTest, Opcode7XNNAddsToRegister) {
     cpu.m_V[3] = 0x10;
-    cpu.execute(0x7305, display);
+    cpu.execute(0x7305, display, keypad);
     EXPECT_EQ(cpu.m_V[3], 0x15);
     
     // Test wrap around
     cpu.m_V[3] = 0xFE;
-    cpu.execute(0x7304, display);
+    cpu.execute(0x7304, display, keypad);
     EXPECT_EQ(cpu.m_V[3], 0x02);
 }
 
@@ -237,7 +239,7 @@ TEST_F(CPUTest, Opcode8XY0SetsVxToVy) {
     cpu.m_V[1] = 0x11;
     cpu.m_V[2] = 0x22;
 
-    cpu.execute(0x8120, display);
+    cpu.execute(0x8120, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0x22);
 }
@@ -246,7 +248,7 @@ TEST_F(CPUTest, Opcode8XY1SetsVxToVxORVy) {
     cpu.m_V[1] = 0b1010;
     cpu.m_V[2] = 0b0101;
 
-    cpu.execute(0x8121, display);
+    cpu.execute(0x8121, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b1111);
 }
@@ -255,7 +257,7 @@ TEST_F(CPUTest, Opcode8XY2SetsVxToVxANDVy) {
     cpu.m_V[1] = 0b1100;
     cpu.m_V[2] = 0b1010;
 
-    cpu.execute(0x8122, display);
+    cpu.execute(0x8122, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b1000);
 }
@@ -264,7 +266,7 @@ TEST_F(CPUTest, Opcode8XY3SetsVxToVxXORVy) {
     cpu.m_V[1] = 0b1100;
     cpu.m_V[2] = 0b1010;
 
-    cpu.execute(0x8123, display);
+    cpu.execute(0x8123, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b0110);
 }
@@ -273,7 +275,7 @@ TEST_F(CPUTest, Opcode8XY4AddsVyToVxWithoutCarry) {
     cpu.m_V[1] = 0x10;
     cpu.m_V[2] = 0x05;
 
-    cpu.execute(0x8124, display);
+    cpu.execute(0x8124, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0x15);
     EXPECT_EQ(cpu.m_V[0xF], 0);
@@ -283,7 +285,7 @@ TEST_F(CPUTest, Opcode8XY4AddsVyToVxWithCarry) {
     cpu.m_V[1] = 0xFE;
     cpu.m_V[2] = 0x04;
 
-    cpu.execute(0x8124, display);
+    cpu.execute(0x8124, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0x02); // wraps around mod 256
     EXPECT_EQ(cpu.m_V[0xF], 1);
@@ -293,7 +295,7 @@ TEST_F(CPUTest, Opcode8XY5SubtractsVyFromVxWithoutBorrow) {
     cpu.m_V[1] = 0x10;
     cpu.m_V[2] = 0x05;
 
-    cpu.execute(0x8125, display);
+    cpu.execute(0x8125, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0x0B);
     EXPECT_EQ(cpu.m_V[0xF], 1); // VX >= VY, no borrow
@@ -303,7 +305,7 @@ TEST_F(CPUTest, Opcode8XY5SubtractsVyFromVxWithBorrow) {
     cpu.m_V[1] = 0x05;
     cpu.m_V[2] = 0x10;
 
-    cpu.execute(0x8125, display);
+    cpu.execute(0x8125, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0xF5); // wraps around
     EXPECT_EQ(cpu.m_V[0xF], 0); // VX < VY, borrow occurred
@@ -312,7 +314,7 @@ TEST_F(CPUTest, Opcode8XY5SubtractsVyFromVxWithBorrow) {
 TEST_F(CPUTest, Opcode8XY6ShiftsVyRightIntoVxAndSetsVFToShiftedOutBit) {
     cpu.m_V[2] = 0b00000011; // least significant bit is 1
 
-    cpu.execute(0x8126, display);
+    cpu.execute(0x8126, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b00000001);
     EXPECT_EQ(cpu.m_V[0xF], 1);
@@ -321,7 +323,7 @@ TEST_F(CPUTest, Opcode8XY6ShiftsVyRightIntoVxAndSetsVFToShiftedOutBit) {
 TEST_F(CPUTest, Opcode8XY6ClearsVFWhenShiftedOutBitIsZero) {
     cpu.m_V[2] = 0b00000010; // least significant bit is 0
 
-    cpu.execute(0x8126, display);
+    cpu.execute(0x8126, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b00000001);
     EXPECT_EQ(cpu.m_V[0xF], 0);
@@ -331,7 +333,7 @@ TEST_F(CPUTest, Opcode8XY7SetsVxToVyMinusVxWithoutBorrow) {
     cpu.m_V[1] = 0x05;
     cpu.m_V[2] = 0x10;
 
-    cpu.execute(0x8127, display);
+    cpu.execute(0x8127, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0x0B);
     EXPECT_EQ(cpu.m_V[0xF], 1); // VY >= VX, no borrow
@@ -341,7 +343,7 @@ TEST_F(CPUTest, Opcode8XY7SetsVxToVyMinusVxWithBorrow) {
     cpu.m_V[1] = 0x10;
     cpu.m_V[2] = 0x05;
 
-    cpu.execute(0x8127, display);
+    cpu.execute(0x8127, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0xF5); // wraps around
     EXPECT_EQ(cpu.m_V[0xF], 0); // VY < VX, borrow occurred
@@ -350,7 +352,7 @@ TEST_F(CPUTest, Opcode8XY7SetsVxToVyMinusVxWithBorrow) {
 TEST_F(CPUTest, Opcode8XYEShiftsVyLeftIntoVxAndSetsVFToShiftedOutBit) {
     cpu.m_V[2] = 0b11000000; // most significant bit is 1
 
-    cpu.execute(0x812E, display);
+    cpu.execute(0x812E, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b10000000);
     EXPECT_EQ(cpu.m_V[0xF], 1);
@@ -359,15 +361,15 @@ TEST_F(CPUTest, Opcode8XYEShiftsVyLeftIntoVxAndSetsVFToShiftedOutBit) {
 TEST_F(CPUTest, Opcode8XYEClearsVFWhenShiftedOutBitIsZero) {
     cpu.m_V[2] = 0b01000000; // most significant bit is 0
 
-    cpu.execute(0x812E, display);
+    cpu.execute(0x812E, display, keypad);
 
     EXPECT_EQ(cpu.m_V[1], 0b10000000);
     EXPECT_EQ(cpu.m_V[0xF], 0);
 }
 
 TEST_F(CPUTest, Opcode8XYNThrowsOnUnknownSubOpcode) {
-    EXPECT_THROW(cpu.execute(0x8128, display), std::invalid_argument);
-    EXPECT_THROW(cpu.execute(0x8129, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x8128, display, keypad), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x8129, display, keypad), std::invalid_argument);
 }
 
 TEST_F(CPUTest, Opcode9XY0SkipsWhenNotEqual) {
@@ -375,7 +377,7 @@ TEST_F(CPUTest, Opcode9XY0SkipsWhenNotEqual) {
     cpu.m_V[1] = 0x91;
     cpu.m_V[2] = 0x92;
 
-    cpu.execute(0x9120, display);
+    cpu.execute(0x9120, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc + 2);
 }
@@ -385,40 +387,40 @@ TEST_F(CPUTest, Opcode9XY0DoesNotSkipWhenEqual) {
     cpu.m_V[1] = 0x91;
     cpu.m_V[2] = 0x91;
 
-    cpu.execute(0x9120, display);
+    cpu.execute(0x9120, display, keypad);
 
     EXPECT_EQ(cpu.m_pc, start_pc);
 }
 
 TEST_F(CPUTest, Opcode9XY0ThrowsOnInvalidSubOpcode) {
-    EXPECT_THROW(cpu.execute(0x9121, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x9121, display, keypad), std::invalid_argument);
 }
 
 TEST_F(CPUTest, OpcodeANNNSetsIRegister) {
-    cpu.execute(0xAABC, display);
+    cpu.execute(0xAABC, display, keypad);
     EXPECT_EQ(cpu.m_I, 0xABC);
 }
 
 TEST_F(CPUTest, OpcodeBNNNJumpsToAddressPlusV0) {
     cpu.m_V[0] = 0x10;
-    cpu.execute(0xB300, display);
+    cpu.execute(0xB300, display, keypad);
     EXPECT_EQ(cpu.m_pc, 0x310);
 }
 
 TEST_F(CPUTest, OpcodeCXNNMasksRandomValueWithNN) {
     // NN = 0x00 forces the result to 0
-    cpu.execute(0xC500, display);
+    cpu.execute(0xC500, display, keypad);
     EXPECT_EQ(cpu.m_V[5], 0x00);
 
     // NN = 0x0F should always clear the upper nibble
     for (int i{0}; i < 100; ++i) {
-        cpu.execute(0xC50F, display);
+        cpu.execute(0xC50F, display, keypad);
         EXPECT_EQ(cpu.m_V[5] & 0xF0, 0x00);
     }
 
     // NN = 0xF0 should always clear the lower nibble
     for (int i{0}; i < 100; ++i) {
-        cpu.execute(0xC5F0, display);
+        cpu.execute(0xC5F0, display, keypad);
         EXPECT_EQ(cpu.m_V[5] & 0x0F, 0x00);
     }
 }
@@ -426,7 +428,7 @@ TEST_F(CPUTest, OpcodeCXNNMasksRandomValueWithNN) {
 TEST_F(CPUTest, OpcodeCXNNProducesVaryingValues) {
     std::vector<uint8_t> results;
     for (int i{0}; i < 100; ++i) {
-        cpu.execute(0xC6FF, display);
+        cpu.execute(0xC6FF, display, keypad);
         results.push_back(cpu.m_V[6]);
     }
 
@@ -449,12 +451,12 @@ TEST_F(CPUTest, OpcodeDXYNDrawsSpriteAndSetsCollision) {
     cpu.m_V[1] = 0;
     
     // Draw it
-    cpu.execute(0xD011, display);
+    cpu.execute(0xD011, display, keypad);
     EXPECT_EQ(display.get_pixel_at(0, 0), 1);
     EXPECT_EQ(cpu.m_V[0xF], 0);
     
     // Draw it again at same position, should collision and clear
-    cpu.execute(0xD011, display);
+    cpu.execute(0xD011, display, keypad);
     EXPECT_EQ(display.get_pixel_at(0, 0), 0);
     EXPECT_EQ(cpu.m_V[0xF], 1);
 }
@@ -469,7 +471,7 @@ TEST_F(CPUTest, OpcodeDXYNHandlesWrappingAndClipping) {
     cpu.m_V[0] = Display::WIDTH - 1;
     cpu.m_V[1] = Display::HEIGHT - 1;
 
-    cpu.execute(0xD012, display);
+    cpu.execute(0xD012, display, keypad);
     
     // Only the top-left pixel of the sprite at (63, 31) should be drawn
     EXPECT_EQ(display.get_pixel_at(Display::WIDTH - 1, Display::HEIGHT - 1), 1);
@@ -481,7 +483,7 @@ TEST_F(CPUTest, OpcodeDXYNHandlesWrappingAndClipping) {
     cpu.m_V[0] = Display::WIDTH + 2;
     cpu.m_V[1] = Display::HEIGHT + 2;
     
-    cpu.execute(0xD012, display);
+    cpu.execute(0xD012, display, keypad);
     
     // Check that sprite was drawn at the wrapped coordinates (2, 2)
     EXPECT_EQ(display.get_pixel_at(2, 2), 1);
@@ -492,44 +494,44 @@ TEST_F(CPUTest, OpcodeDXYNHandlesWrappingAndClipping) {
 
 TEST_F(CPUTest, OpcodeFX07SetsVxToDelayTimer) {
     cpu.m_delay_timer = 0x42;
-    cpu.execute(0xF107, display);
+    cpu.execute(0xF107, display, keypad);
     EXPECT_EQ(cpu.m_V[1], 0x42);
 }
 
 TEST_F(CPUTest, OpcodeFX15SetsDelayTimerToVx) {
     cpu.m_V[2] = 0x43;
-    cpu.execute(0xF215, display);
+    cpu.execute(0xF215, display, keypad);
     EXPECT_EQ(cpu.m_delay_timer, 0x43);
 }
 
 TEST_F(CPUTest, OpcodeFX1EAddsVxToI) {
     cpu.m_I = 0x300;
     cpu.m_V[5] = 0x10;
-    cpu.execute(0xF51E, display);
+    cpu.execute(0xF51E, display, keypad);
     EXPECT_EQ(cpu.m_I, 0x310);
 }
 
 TEST_F(CPUTest, OpcodeFX29SetsIToFontCharacterAddress) {
     cpu.m_V[3] = 0x0;
-    cpu.execute(0xF329, display);
+    cpu.execute(0xF329, display, keypad);
     EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS); // 0 is the first character
 
     cpu.m_V[3] = 0xF;
-    cpu.execute(0xF329, display);
+    cpu.execute(0xF329, display, keypad);
     EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS + 0xF * cpu.FONT_CHAR_SIZE); // F is the last character
 }
 
 TEST_F(CPUTest, OpcodeFX29OnlyUsesLowNibbleOfVx) {
     // Upper nibble should be ignored, only digits 0-F are valid font characters
     cpu.m_V[4] = 0xAB;
-    cpu.execute(0xF429, display);
+    cpu.execute(0xF429, display, keypad);
     EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS + 0xB * cpu.FONT_CHAR_SIZE);
 }
 
 TEST_F(CPUTest, OpcodeFX33StoresBCDOfVx) {
     cpu.m_I = 0x300;
     cpu.m_V[2] = 156;
-    cpu.execute(0xF233, display);
+    cpu.execute(0xF233, display, keypad);
     EXPECT_EQ(cpu.m_memory[cpu.m_I], 1);
     EXPECT_EQ(cpu.m_memory[cpu.m_I + 1], 5);
     EXPECT_EQ(cpu.m_memory[cpu.m_I + 2], 6);
@@ -538,7 +540,7 @@ TEST_F(CPUTest, OpcodeFX33StoresBCDOfVx) {
 TEST_F(CPUTest, OpcodeFX33HandlesSingleDigitValue) {
     cpu.m_I = 0x300;
     cpu.m_V[2] = 7;
-    cpu.execute(0xF233, display);
+    cpu.execute(0xF233, display, keypad);
     EXPECT_EQ(cpu.m_memory[cpu.m_I], 0);
     EXPECT_EQ(cpu.m_memory[cpu.m_I + 1], 0);
     EXPECT_EQ(cpu.m_memory[cpu.m_I + 2], 7);
@@ -549,7 +551,7 @@ TEST_F(CPUTest, OpcodeFX55StoresV0ThroughVxInMemoryStartingAtI) {
     cpu.m_V[0] = 0x11;
     cpu.m_V[1] = 0x22;
     cpu.m_V[2] = 0x33;
-    cpu.execute(0xF255, display);
+    cpu.execute(0xF255, display, keypad);
     EXPECT_EQ(cpu.m_memory[0x300], 0x11);
     EXPECT_EQ(cpu.m_memory[0x301], 0x22);
     EXPECT_EQ(cpu.m_memory[0x302], 0x33);
@@ -557,14 +559,14 @@ TEST_F(CPUTest, OpcodeFX55StoresV0ThroughVxInMemoryStartingAtI) {
 
 TEST_F(CPUTest, OpcodeFX55SetsIToIPlusXPlusOne) {
     cpu.m_I = 0x300;
-    cpu.execute(0xF255, display);
+    cpu.execute(0xF255, display, keypad);
     EXPECT_EQ(cpu.m_I, 0x303);
 }
 
 TEST_F(CPUTest, OpcodeFX65FillsV0ThroughVxFromMemoryStartingAtI) {
     cpu.m_I = 0x300;
     set_memory(0x300, {0x11, 0x22, 0x33});
-    cpu.execute(0xF265, display);
+    cpu.execute(0xF265, display, keypad);
     EXPECT_EQ(cpu.m_V[0], 0x11);
     EXPECT_EQ(cpu.m_V[1], 0x22);
     EXPECT_EQ(cpu.m_V[2], 0x33);
@@ -572,7 +574,7 @@ TEST_F(CPUTest, OpcodeFX65FillsV0ThroughVxFromMemoryStartingAtI) {
 
 TEST_F(CPUTest, OpcodeFX65SetsIToIPlusXPlusOne) {
     cpu.m_I = 0x300;
-    cpu.execute(0xF265, display);
+    cpu.execute(0xF265, display, keypad);
     EXPECT_EQ(cpu.m_I, 0x303);
 }
 
@@ -581,13 +583,13 @@ TEST_F(CPUTest, OpcodeFX55ThenFX65RoundTripsRegisterValues) {
     cpu.m_V[0] = 0xAA;
     cpu.m_V[1] = 0xBB;
     cpu.m_V[2] = 0xCC;
-    cpu.execute(0xF255, display);
+    cpu.execute(0xF255, display, keypad);
 
     cpu.m_V[0] = 0;
     cpu.m_V[1] = 0;
     cpu.m_V[2] = 0;
     cpu.m_I = 0x300;
-    cpu.execute(0xF265, display);
+    cpu.execute(0xF265, display, keypad);
 
     EXPECT_EQ(cpu.m_V[0], 0xAA);
     EXPECT_EQ(cpu.m_V[1], 0xBB);
@@ -595,7 +597,7 @@ TEST_F(CPUTest, OpcodeFX55ThenFX65RoundTripsRegisterValues) {
 }
 
 TEST_F(CPUTest, OpcodeFXNNThrowsOnUnknownSubOpcode) {
-    EXPECT_THROW(cpu.execute(0xF000, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0xF000, display, keypad), std::invalid_argument);
 }
 
 TEST_F(CPUTest, FetchThrowsWhenOutOfBounds) {
@@ -604,8 +606,8 @@ TEST_F(CPUTest, FetchThrowsWhenOutOfBounds) {
 }
 
 TEST_F(CPUTest, ExecuteThrowsOnUnknownOpcode) {
-    EXPECT_THROW(cpu.execute(0x0000, display), std::invalid_argument);
-    EXPECT_THROW(cpu.execute(0xE000, display), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0x0000, display, keypad), std::invalid_argument);
+    EXPECT_THROW(cpu.execute(0xE000, display, keypad), std::invalid_argument);
 }
 
 TEST_F(CPUTest, LoadRomLoadsBytesAtRomStartAddress) {

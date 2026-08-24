@@ -3,12 +3,14 @@ project(chip8_emulator)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(chip8_emulator 
+add_executable(chip8_emulator
         src/main.cpp
         src/CPU.cpp
         src/CPU.h
         src/Display.cpp
         src/Display.h
+        src/Keypad.cpp
+        src/Keypad.h
         src/TerminalDisplay.cpp
         src/TerminalDisplay.h
 )
@@ -26,8 +28,10 @@ enable_testing()
 add_executable(tests
         tests/CPU_test.cpp
         tests/Display_test.cpp
+        tests/Keypad_test.cpp
         src/CPU.cpp
         src/Display.cpp
+        src/Keypad.cpp
 )
 target_link_libraries(tests gtest_main)
 

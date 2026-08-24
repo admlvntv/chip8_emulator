@@ -2,6 +2,7 @@
 #define CHIP8_EMULATOR_CPU_H
 
 #include "Display.h"
+#include "Keypad.h"
 #include <array>
 #include <stack>
 #include <cstdint>
@@ -13,7 +14,7 @@ public:
 
   void load_rom(const std::string& filepath); // Loads ROM into memory at 0x200
 
-  void cycle(Display& display); // Main CPU cycle
+  void cycle(Display& display, const Keypad& keypad); // Main CPU cycle
   void updateTimers(); // Decrements delay and sound timers. Call at 60Hz.
 
 private:
@@ -26,7 +27,7 @@ private:
 
   // CPU cycle
   uint16_t fetch(); // Returns raw big-endian 16-bit opcode and advances PC by 2
-  void execute(uint16_t opcode, Display &display);
+  void execute(uint16_t opcode, Display &display, const Keypad &keypad);
 
   // Initialize memory with fonts
   void load_fontset();
