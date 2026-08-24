@@ -335,6 +335,22 @@ void CPU::execute(uint16_t opcode, Display &display) {
       break;
     }
 
+    case 0x55:
+      // TODO: add quirk for SUPER-CHIP
+      for (uint8_t i{0}; i <= x; ++i) {
+        m_memory[m_I + i] = m_V[i];
+      }
+      m_I += x + 1;
+      break;
+
+    case 0x65:
+      // TODO: add quirk for SUPER-CHIP
+      for (uint8_t i{0}; i <= x; ++i) {
+        m_V[i] = m_memory[m_I + i];
+      }
+      m_I += x + 1;
+      break;
+
     default:
       throw std::invalid_argument("Unknown 0xF opcode");
     }

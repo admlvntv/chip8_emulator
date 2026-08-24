@@ -544,6 +544,56 @@ TEST_F(CPUTest, OpcodeFX33HandlesSingleDigitValue) {
     EXPECT_EQ(cpu.m_memory[cpu.m_I + 2], 7);
 }
 
+TEST_F(CPUTest, OpcodeFX55StoresV0ThroughVxInMemoryStartingAtI) {
+    cpu.m_I = 0x300;
+    cpu.m_V[0] = 0x11;
+    cpu.m_V[1] = 0x22;
+    cpu.m_V[2] = 0x33;
+    cpu.execute(0xF255, display);
+    EXPECT_EQ(cpu.m_memory[0x300], 0x11);
+    EXPECT_EQ(cpu.m_memory[0x301], 0x22);
+    EXPECT_EQ(cpu.m_memory[0x302], 0x33);
+}
+
+TEST_F(CPUTest, OpcodeFX55SetsIToIPlusXPlusOne) {
+    cpu.m_I = 0x300;
+    cpu.execute(0xF255, display);
+    EXPECT_EQ(cpu.m_I, 0x303);
+}
+
+TEST_F(CPUTest, OpcodeFX65FillsV0ThroughVxFromMemoryStartingAtI) {
+    cpu.m_I = 0x300;
+    set_memory(0x300, {0x11, 0x22, 0x33});
+    cpu.execute(0xF265, display);
+    EXPECT_EQ(cpu.m_V[0], 0x11);
+    EXPECT_EQ(cpu.m_V[1], 0x22);
+    EXPECT_EQ(cpu.m_V[2], 0x33);
+}
+
+TEST_F(CPUTest, OpcodeFX65SetsIToIPlusXPlusOne) {
+    cpu.m_I = 0x300;
+    cpu.execute(0xF265, display);
+    EXPECT_EQ(cpu.m_I, 0x303);
+}
+
+TEST_F(CPUTest, OpcodeFX55ThenFX65RoundTripsRegisterValues) {
+    cpu.m_I = 0x300;
+    cpu.m_V[0] = 0xAA;
+    cpu.m_V[1] = 0xBB;
+    cpu.m_V[2] = 0xCC;
+    cpu.execute(0xF255, display);
+
+    cpu.m_V[0] = 0;
+    cpu.m_V[1] = 0;
+    cpu.m_V[2] = 0;
+    cpu.m_I = 0x300;
+    cpu.execute(0xF265, display);
+
+    EXPECT_EQ(cpu.m_V[0], 0xAA);
+    EXPECT_EQ(cpu.m_V[1], 0xBB);
+    EXPECT_EQ(cpu.m_V[2], 0xCC);
+}
+
 TEST_F(CPUTest, OpcodeFXNNThrowsOnUnknownSubOpcode) {
     EXPECT_THROW(cpu.execute(0xF000, display), std::invalid_argument);
 }
