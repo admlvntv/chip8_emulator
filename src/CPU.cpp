@@ -316,6 +316,10 @@ void CPU::execute(uint16_t opcode, Display &display) {
       m_delay_timer = m_V[x];
       break;
 
+    case 0x1E:
+      m_I += m_V[x];
+      break;
+
     case 0x29:
       // Point I at the font sprite for the hex digit in VX's low nibble (digits 0-F only)
       m_I = FONT_START_ADDRESS + (m_V[x] & 0x0F) * FONT_CHAR_SIZE;

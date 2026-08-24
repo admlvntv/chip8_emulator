@@ -502,6 +502,13 @@ TEST_F(CPUTest, OpcodeFX15SetsDelayTimerToVx) {
     EXPECT_EQ(cpu.m_delay_timer, 0x43);
 }
 
+TEST_F(CPUTest, OpcodeFX1EAddsVxToI) {
+    cpu.m_I = 0x300;
+    cpu.m_V[5] = 0x10;
+    cpu.execute(0xF51E, display);
+    EXPECT_EQ(cpu.m_I, 0x310);
+}
+
 TEST_F(CPUTest, OpcodeFX29SetsIToFontCharacterAddress) {
     cpu.m_V[3] = 0x0;
     cpu.execute(0xF329, display);
