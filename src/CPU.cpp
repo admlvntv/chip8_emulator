@@ -193,49 +193,58 @@ void CPU::execute(uint16_t opcode, Display &display, const Keypad &keypad) {
       m_V[x] = m_V[x] ^ m_V[y];
       break;
 
-    case 0x4:
-      // Set VF flag if VX+VY > 255
-      if (m_V[y] > UINT8_MAX - m_V[x]) {
-        m_V[0xF] = 1;
-      }
-      else {
-        m_V[0xF] = 0;
-      }
-      m_V[x] += m_V[y];
+    case 0x4: {
+      // Compute the flag in advance
+      // VF still ends up holding the carry flag even if X or Y is VF
+      uint8_t vx{m_V[x]};
+      uint8_t vy{m_V[y]};
+      uint8_t carry{ static_cast<uint8_t>(vy > UINT8_MAX - vx ? 1 : 0) }; // Set VF flag if VX+VY > 255
+      m_V[x] = vx + vy;
+      m_V[0xF] = carry;
       break;
+    }
 
-    case 0x5:
+    case 0x5: {
       // Set VF flag if minuend (first operand) >= subtrahend (second operand)
-      if (m_V[x] >= m_V[y]) {
-        m_V[0xF] = 1;
-      }
-      else {
-        m_V[0xF] = 0;
-      }
-      m_V[x] -= m_V[y];
+      // Compute the flag in advance
+      // VF still ends up holding the carry flag even if X or Y is VF
+      uint8_t vx{m_V[x]};
+      uint8_t vy{m_V[y]};
+      uint8_t no_borrow{ static_cast<uint8_t>(vx >= vy ? 1 : 0) };
+      m_V[x] = vx - vy;
+      m_V[0xF] = no_borrow;
       break;
+    }
 
-    case 0x6:
+    case 0x6: {
       // TODO: add quirk for SUPER-CHIP
-      m_V[0xF] = m_V[y] & 0b00000001;
-      m_V[x] = m_V[y] >> 1;
+      // Capture VY before writing VX (in case X is VF) and write the flag last (in case Y is VF)
+      uint8_t vy{m_V[y]};
+      uint8_t shifted_out{ static_cast<uint8_t>(vy & 0b00000001) };
+      m_V[x] = vy >> 1;
+      m_V[0xF] = shifted_out;
       break;
-    case 0x7:
+    }
+    case 0x7: {
       // Set VF flag if minuend (first operand) >= subtrahend (second operand)
-      if (m_V[y] >= m_V[x]) {
-        m_V[0xF] = 1;
-      }
-      else {
-        m_V[0xF] = 0;
-      }
-      m_V[x] = m_V[y] - m_V[x];
+      // Compute the flag in advance and write it last, so VF still ends up holding the borrow flag even if X or Y is VF
+      uint8_t vx{m_V[x]};
+      uint8_t vy{m_V[y]};
+      uint8_t no_borrow{ static_cast<uint8_t>(vy >= vx ? 1 : 0) };
+      m_V[x] = vy - vx;
+      m_V[0xF] = no_borrow;
       break;
+    }
 
-    case 0xE:
+    case 0xE: {
       // TODO: add quirk for SUPER-CHIP
-      m_V[0xF] = (m_V[y] & 0b10000000) >> 7;
-      m_V[x] = m_V[y] << 1;
+      // Capture VY before writing VX (in case X is VF) and write the flag last (in case Y is VF)
+      uint8_t vy{m_V[y]};
+      uint8_t shifted_out{ static_cast<uint8_t>((vy & 0b10000000) >> 7) };
+      m_V[x] = vy << 1;
+      m_V[0xF] = shifted_out;
       break;
+    }
 
     default:
       throw std::invalid_argument("Unknown 0x8 opcode");

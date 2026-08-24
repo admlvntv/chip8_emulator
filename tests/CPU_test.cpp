@@ -649,3 +649,278 @@ TEST_F(CPUTest, LoadRomThrowsWhenRomTooLarge) {
 
     std::filesystem::remove(rom_path);
 }
+
+// The following tests are ported from the "flags" test ROM
+// see: https://github.com/Timendus/chip8-test-suite/blob/main/src/tests/4-flags.8o
+TEST_F(CPUTest, FlagsRomOrNoCarry) {
+    cpu.m_V[3] = 15;
+    cpu.m_V[0xF] = 20;
+    cpu.execute(0x83F1, display, keypad); // v3 |= vF -> 15 | 20 = 31
+
+    cpu.m_V[0xF] = 0;
+    cpu.m_V[2] = 50;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8211, display, keypad); // v2 |= v1 -> 50 | 15 = 63
+
+    EXPECT_EQ(cpu.m_V[2], 63);
+    EXPECT_EQ(cpu.m_V[0xF], 0); // VF must not be clobbered by an OR that doesn't target VF
+    EXPECT_EQ(cpu.m_V[3], 31);
+}
+
+TEST_F(CPUTest, FlagsRomAndNoCarry) {
+    cpu.m_V[3] = 15;
+    cpu.m_V[0xF] = 20;
+    cpu.execute(0x83F2, display, keypad); // v3 &= vF -> 15 & 20 = 4
+
+    cpu.m_V[0xF] = 0;
+    cpu.m_V[2] = 50;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8212, display, keypad); // v2 &= v1 -> 50 & 15 = 2
+
+    EXPECT_EQ(cpu.m_V[2], 2);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 4);
+}
+
+TEST_F(CPUTest, FlagsRomXorNoCarry) {
+    cpu.m_V[3] = 15;
+    cpu.m_V[0xF] = 20;
+    cpu.execute(0x83F3, display, keypad); // v3 ^= vF -> 15 ^ 20 = 27
+
+    cpu.m_V[0xF] = 0;
+    cpu.m_V[2] = 50;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8213, display, keypad); // v2 ^= v1 -> 50 ^ 15 = 61
+
+    EXPECT_EQ(cpu.m_V[2], 61);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 27);
+}
+
+TEST_F(CPUTest, FlagsRomAddNoOverflow) {
+    cpu.m_V[0xF] = 20;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8F14, display, keypad); // vF += v1 -> sum 35, but VF must end up holding the carry flag (0)
+    cpu.m_V[4] = cpu.m_V[0xF];
+
+    cpu.m_V[3] = 15;
+    cpu.m_V[0xF] = 20;
+    cpu.execute(0x83F4, display, keypad); // v3 += vF -> 15 + 20 = 35
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 50;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8214, display, keypad); // v2 += v1 -> 50 + 15 = 65
+
+    EXPECT_EQ(cpu.m_V[2], 65);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 35);
+    EXPECT_EQ(cpu.m_V[4], 0);
+}
+
+TEST_F(CPUTest, FlagsRomSubVxMinusVyNoBorrow) {
+    cpu.m_V[0xF] = 20;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8F15, display, keypad); // vF -= v1 -> 20 - 15 = 5, but VF must end up holding the no-borrow flag (1)
+    cpu.m_V[4] = cpu.m_V[0xF];
+
+    cpu.m_V[3] = 20;
+    cpu.m_V[0xF] = 15;
+    cpu.execute(0x83F5, display, keypad); // v3 -= vF -> 20 - 15 = 5
+
+    // N - N (equal operands) must not report a borrow
+    cpu.m_V[5] = 10;
+    cpu.m_V[0xF] = 10;
+    cpu.execute(0x85F5, display, keypad); // v5 -= vF -> 10 - 10 = 0, flag = 1 (no borrow)
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    cpu.m_V[5] = cpu.m_V[0xF];
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 50;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8215, display, keypad); // v2 -= v1 -> 50 - 15 = 35
+
+    EXPECT_EQ(cpu.m_V[2], 35);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    EXPECT_EQ(cpu.m_V[3], 5);
+    EXPECT_EQ(cpu.m_V[4], 1);
+    EXPECT_EQ(cpu.m_V[5], 1);
+}
+
+TEST_F(CPUTest, FlagsRomShrNoLsb) {
+    cpu.m_V[0xF] = 60; // LSB is 0
+    cpu.execute(0x8FF6, display, keypad); // vF >>= vF -> 60 >> 1 = 30, but VF must end up holding the shifted-out bit (0)
+    cpu.m_V[3] = cpu.m_V[0xF];
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 60;
+    cpu.execute(0x8226, display, keypad); // v2 >>= v2 -> 60 >> 1 = 30
+
+    EXPECT_EQ(cpu.m_V[2], 30);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 0);
+}
+
+TEST_F(CPUTest, FlagsRomSubnVyMinusVxNoBorrow) {
+    cpu.m_V[0xF] = 10;
+    cpu.m_V[1] = 15;
+    cpu.execute(0x8F17, display, keypad); // vF =- v1 -> 15 - 10 = 5, but VF must end up holding the no-borrow flag (1)
+    cpu.m_V[4] = cpu.m_V[0xF];
+
+    cpu.m_V[3] = 15;
+    cpu.m_V[0xF] = 20;
+    cpu.execute(0x83F7, display, keypad); // v3 =- vF -> 20 - 15 = 5
+
+    // N - N (equal operands) must not report a borrow
+    cpu.m_V[5] = 10;
+    cpu.m_V[0xF] = 10;
+    cpu.execute(0x85F7, display, keypad); // v5 =- vF -> 10 - 10 = 0, flag = 1 (no borrow)
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    cpu.m_V[5] = cpu.m_V[0xF];
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 15;
+    cpu.m_V[1] = 50;
+    cpu.execute(0x8217, display, keypad); // v2 =- v1 -> 50 - 15 = 35
+
+    EXPECT_EQ(cpu.m_V[2], 35);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    EXPECT_EQ(cpu.m_V[3], 5);
+    EXPECT_EQ(cpu.m_V[4], 1);
+    EXPECT_EQ(cpu.m_V[5], 1);
+}
+
+TEST_F(CPUTest, FlagsRomShlNoMsb) {
+    cpu.m_V[0xF] = 50; // MSB is 0
+    cpu.execute(0x8FFE, display, keypad); // vF <<= vF -> 50 << 1 = 100, but VF must end up holding the shifted-out bit (0)
+    cpu.m_V[3] = cpu.m_V[0xF];
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 50;
+    cpu.execute(0x822E, display, keypad); // v2 <<= v2 -> 50 << 1 = 100
+
+    EXPECT_EQ(cpu.m_V[2], 100);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 0);
+}
+
+TEST_F(CPUTest, FlagsRomAddWithOverflow) {
+    cpu.m_V[0xF] = 200;
+    cpu.m_V[1] = 100;
+    cpu.execute(0x8F14, display, keypad); // vF += v1 -> 300 wraps to 44, but VF must end up holding the carry flag (1)
+    cpu.m_V[4] = cpu.m_V[0xF];
+
+    cpu.m_V[3] = 100;
+    cpu.m_V[0xF] = 200;
+    cpu.execute(0x83F4, display, keypad); // v3 += vF -> 100 + 200 = 300 wraps to 44
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 200;
+    cpu.m_V[1] = 100;
+    cpu.execute(0x8214, display, keypad); // v2 += v1 -> 200 + 100 = 300 wraps to 44
+
+    EXPECT_EQ(cpu.m_V[2], 44);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    EXPECT_EQ(cpu.m_V[3], 44);
+    EXPECT_EQ(cpu.m_V[4], 1);
+}
+
+TEST_F(CPUTest, FlagsRomSubVxMinusVyWithBorrow) {
+    cpu.m_V[0xF] = 95;
+    cpu.m_V[1] = 100;
+    cpu.execute(0x8F15, display, keypad); // vF -= v1 -> 95 - 100 wraps to 251, but VF must end up holding the borrow flag (0)
+    cpu.m_V[4] = cpu.m_V[0xF];
+
+    cpu.m_V[3] = 95;
+    cpu.m_V[0xF] = 100;
+    cpu.execute(0x83F5, display, keypad); // v3 -= vF -> 95 - 100 wraps to 251
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 95;
+    cpu.m_V[1] = 100;
+    cpu.execute(0x8215, display, keypad); // v2 -= v1 -> 95 - 100 wraps to 251
+
+    EXPECT_EQ(cpu.m_V[2], 251);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 251);
+    EXPECT_EQ(cpu.m_V[4], 0);
+}
+
+TEST_F(CPUTest, FlagsRomShrWithLsb) {
+    cpu.m_V[0xF] = 61; // LSB is 1
+    cpu.execute(0x8FF6, display, keypad); // vF >>= vF -> 61 >> 1 = 30, but VF must end up holding the shifted-out bit (1)
+    cpu.m_V[3] = cpu.m_V[0xF];
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 61;
+    cpu.execute(0x8226, display, keypad); // v2 >>= v2 -> 61 >> 1 = 30
+
+    EXPECT_EQ(cpu.m_V[2], 30);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    EXPECT_EQ(cpu.m_V[3], 1);
+}
+
+TEST_F(CPUTest, FlagsRomSubnVyMinusVxWithBorrow) {
+    cpu.m_V[0xF] = 105;
+    cpu.m_V[1] = 100;
+    cpu.execute(0x8F17, display, keypad); // vF =- v1 -> 100 - 105 wraps to 251, but VF must end up holding the borrow flag (0)
+    cpu.m_V[4] = cpu.m_V[0xF];
+
+    cpu.m_V[3] = 105;
+    cpu.m_V[0xF] = 100;
+    cpu.execute(0x83F7, display, keypad); // v3 =- vF -> 100 - 105 wraps to 251
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 105;
+    cpu.m_V[1] = 100;
+    cpu.execute(0x8217, display, keypad); // v2 =- v1 -> 100 - 105 wraps to 251
+
+    EXPECT_EQ(cpu.m_V[2], 251);
+    EXPECT_EQ(cpu.m_V[0xF], 0);
+    EXPECT_EQ(cpu.m_V[3], 251);
+    EXPECT_EQ(cpu.m_V[4], 0);
+}
+
+TEST_F(CPUTest, FlagsRomShlWithMsb) {
+    cpu.m_V[0xF] = 188; // MSB is 1
+    cpu.execute(0x8FFE, display, keypad); // vF <<= vF -> 188 << 1 = 376 wraps to 120, but VF must end up holding the shifted-out bit (1)
+    cpu.m_V[3] = cpu.m_V[0xF];
+
+    cpu.m_V[0xF] = 0xAA;
+    cpu.m_V[2] = 188;
+    cpu.execute(0x822E, display, keypad); // v2 <<= v2 -> 188 << 1 = 376 wraps to 120
+
+    EXPECT_EQ(cpu.m_V[2], 120);
+    EXPECT_EQ(cpu.m_V[0xF], 1);
+    EXPECT_EQ(cpu.m_V[3], 1);
+}
+
+TEST_F(CPUTest, FlagsRomAddToIndexUsingRegularRegister) {
+    cpu.m_I = 0x300;
+    cpu.m_V[1] = 16;
+    cpu.execute(0xF11E, display, keypad); // i += v1
+
+    cpu.m_V[0] = 0xAA;
+    cpu.execute(0xF055, display, keypad); // save v0 (stores memory[I] = v0)
+
+    cpu.m_I = 0x310;
+    cpu.m_V[0] = 0;
+    cpu.execute(0xF065, display, keypad); // load v0 (loads v0 = memory[I])
+
+    EXPECT_EQ(cpu.m_V[0], 0xAA);
+}
+
+TEST_F(CPUTest, FlagsRomAddToIndexUsingVFAsSource) {
+    cpu.m_I = 0x300;
+    cpu.m_V[0xF] = 16;
+    cpu.execute(0xFF1E, display, keypad); // i += vF
+
+    cpu.m_V[0] = 0x55;
+    cpu.execute(0xF055, display, keypad); // save v0 (stores memory[I] = v0)
+
+    cpu.m_I = 0x310;
+    cpu.m_V[0] = 0;
+    cpu.execute(0xF065, display, keypad); // load v0 (loads v0 = memory[I])
+
+    EXPECT_EQ(cpu.m_V[0], 0x55);
+}
