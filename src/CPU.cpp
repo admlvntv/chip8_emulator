@@ -325,6 +325,16 @@ void CPU::execute(uint16_t opcode, Display &display) {
       m_I = FONT_START_ADDRESS + (m_V[x] & 0x0F) * FONT_CHAR_SIZE;
       break;
 
+    case 0x33: {
+      uint8_t value{m_V[x]};
+      m_memory[m_I + 2] = value % 10; // ones place
+      value /= 10;
+      m_memory[m_I + 1] = value % 10; // tens place
+      value /= 10;
+      m_memory[m_I] = value % 10; // hundreds place
+      break;
+    }
+
     default:
       throw std::invalid_argument("Unknown 0xF opcode");
     }

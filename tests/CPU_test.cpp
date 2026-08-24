@@ -526,6 +526,24 @@ TEST_F(CPUTest, OpcodeFX29OnlyUsesLowNibbleOfVx) {
     EXPECT_EQ(cpu.m_I, cpu.FONT_START_ADDRESS + 0xB * cpu.FONT_CHAR_SIZE);
 }
 
+TEST_F(CPUTest, OpcodeFX33StoresBCDOfVx) {
+    cpu.m_I = 0x300;
+    cpu.m_V[2] = 156;
+    cpu.execute(0xF233, display);
+    EXPECT_EQ(cpu.m_memory[cpu.m_I], 1);
+    EXPECT_EQ(cpu.m_memory[cpu.m_I + 1], 5);
+    EXPECT_EQ(cpu.m_memory[cpu.m_I + 2], 6);
+}
+
+TEST_F(CPUTest, OpcodeFX33HandlesSingleDigitValue) {
+    cpu.m_I = 0x300;
+    cpu.m_V[2] = 7;
+    cpu.execute(0xF233, display);
+    EXPECT_EQ(cpu.m_memory[cpu.m_I], 0);
+    EXPECT_EQ(cpu.m_memory[cpu.m_I + 1], 0);
+    EXPECT_EQ(cpu.m_memory[cpu.m_I + 2], 7);
+}
+
 TEST_F(CPUTest, OpcodeFXNNThrowsOnUnknownSubOpcode) {
     EXPECT_THROW(cpu.execute(0xF000, display), std::invalid_argument);
 }
