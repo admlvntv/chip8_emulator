@@ -3,6 +3,16 @@ project(chip8_emulator)
 
 set(CMAKE_CXX_STANDARD 20)
 
+include(FetchContent)
+
+FetchContent_Declare(
+        SDL3
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+        GIT_TAG release-3.4.14
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(SDL3)
+
 add_executable(chip8_emulator
         src/main.cpp
         src/CPU.cpp
@@ -14,6 +24,7 @@ add_executable(chip8_emulator
         src/TerminalDisplay.cpp
         src/TerminalDisplay.h
 )
+target_link_libraries(chip8_emulator PRIVATE SDL3::SDL3)
 
 include(FetchContent)
 FetchContent_Declare(
