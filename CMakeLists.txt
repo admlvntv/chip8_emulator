@@ -26,7 +26,6 @@ add_executable(chip8_emulator
 )
 target_link_libraries(chip8_emulator PRIVATE SDL3::SDL3)
 
-include(FetchContent)
 FetchContent_Declare(
         googletest
         URL https://github.com/google/googletest/archive/refs/heads/main.zip

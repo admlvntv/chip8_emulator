@@ -18,6 +18,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake g++ build-essential
 
+    - name: Setup SDL
+      uses: libsdl-org/setup-sdl@main
+      id: sdl
+      with:
+        install-linux-dependencies: true
+        version: 3.4.14
+        version-sdl-image: 3.4.14
+
     - name: Configure CMake
       run: cmake -B build -S .
 
