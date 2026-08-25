@@ -315,14 +315,53 @@ void CPU::execute(uint16_t opcode, Display &display, const Keypad &keypad) {
     break;
   }
 
+  case 0xE:
+    switch (nn) {
+    case 0x9E:
+      if (keypad.is_key_down(m_V[x])) {
+        m_pc += 2;
+      }
+      break;
+
+    case 0xA1:
+      if (!keypad.is_key_down(m_V[x])) {
+        m_pc += 2;
+      }
+      break;
+
+    default:
+      throw std::invalid_argument("Unknown 0xE opcode");
+    }
+    break;
+
   case 0xF:
     switch (nn) {
     case 0x07:
       m_V[x] = m_delay_timer;
       break;
 
+    case 0x0A: {
+      // Block on this instruction (by not advancing PC) until a key is held down
+      bool key_found{false};
+      for (uint8_t key{0}; key < Keypad::KEY_COUNT; ++key) {
+        if (keypad.is_key_down(key)) {
+          m_V[x] = key;
+          key_found = true;
+          break;
+        }
+      }
+      if (!key_found) {
+        m_pc -= 2;
+      }
+      break;
+    }
+
     case 0x15:
       m_delay_timer = m_V[x];
+      break;
+
+    case 0x18:
+      m_sound_timer = m_V[x];
       break;
 
     case 0x1E:
@@ -378,5 +417,7 @@ void CPU::updateTimers() {
   if (m_delay_timer > 0) {
     m_delay_timer--;
   }
-  // TODO: implement sound timer
+  if (m_sound_timer > 0) {
+    m_sound_timer--;
+  }
 }

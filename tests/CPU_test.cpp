@@ -14,6 +14,7 @@ public:
     using CPU::m_pc;
     using CPU::m_stack;
     using CPU::m_delay_timer;
+    using CPU::m_sound_timer;
     using CPU::fetch;
     using CPU::execute;
     using CPU::MEMORY_SIZE;
@@ -492,16 +493,93 @@ TEST_F(CPUTest, OpcodeDXYNHandlesWrappingAndClipping) {
     EXPECT_EQ(display.get_pixel_at(3, 3), 1);
 }
 
+TEST_F(CPUTest, OpcodeEX9ESkipsWhenKeyIsDown) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[3] = 0x5;
+    keypad.press(0x5);
+
+    cpu.execute(0xE39E, display, keypad);
+
+    EXPECT_EQ(cpu.m_pc, start_pc + 2);
+}
+
+TEST_F(CPUTest, OpcodeEX9EDoesNotSkipWhenKeyIsUp) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[3] = 0x5;
+    keypad.release(0x5);
+
+    cpu.execute(0xE39E, display, keypad);
+
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, OpcodeEXA1SkipsWhenKeyIsUp) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[3] = 0x5;
+    keypad.release(0x5);
+
+    cpu.execute(0xE3A1, display, keypad);
+
+    EXPECT_EQ(cpu.m_pc, start_pc + 2);
+}
+
+TEST_F(CPUTest, OpcodeEXA1DoesNotSkipWhenKeyIsDown) {
+    uint16_t start_pc{cpu.m_pc};
+    cpu.m_V[3] = 0x5;
+    keypad.press(0x5);
+
+    cpu.execute(0xE3A1, display, keypad);
+
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, OpcodeEXNNThrowsOnUnknownSubOpcode) {
+    EXPECT_THROW(cpu.execute(0xE000, display, keypad), std::invalid_argument);
+}
+
 TEST_F(CPUTest, OpcodeFX07SetsVxToDelayTimer) {
     cpu.m_delay_timer = 0x42;
     cpu.execute(0xF107, display, keypad);
     EXPECT_EQ(cpu.m_V[1], 0x42);
 }
 
+TEST_F(CPUTest, OpcodeFX0AStoresKeyAndAdvancesWhenAKeyIsDown) {
+    uint16_t start_pc{cpu.m_pc};
+    keypad.press(0x7);
+
+    cpu.execute(0xF10A, display, keypad);
+
+    EXPECT_EQ(cpu.m_V[1], 0x7);
+    EXPECT_EQ(cpu.m_pc, start_pc);
+}
+
+TEST_F(CPUTest, OpcodeFX0ABlocksPCWhenNoKeyIsDown) {
+    uint16_t start_pc{cpu.m_pc};
+
+    cpu.execute(0xF10A, display, keypad);
+
+    EXPECT_EQ(cpu.m_pc, start_pc - 2);
+}
+
+TEST_F(CPUTest, OpcodeFX0APicksLowestIndexKeyWhenMultipleAreDown) {
+    keypad.press(0xB);
+    keypad.press(0x2);
+
+    cpu.execute(0xF10A, display, keypad);
+
+    EXPECT_EQ(cpu.m_V[1], 0x2);
+}
+
 TEST_F(CPUTest, OpcodeFX15SetsDelayTimerToVx) {
     cpu.m_V[2] = 0x43;
     cpu.execute(0xF215, display, keypad);
     EXPECT_EQ(cpu.m_delay_timer, 0x43);
+}
+
+TEST_F(CPUTest, OpcodeFX18SetsSoundTimerToVx) {
+    cpu.m_V[2] = 0x43;
+    cpu.execute(0xF218, display, keypad);
+    EXPECT_EQ(cpu.m_sound_timer, 0x43);
 }
 
 TEST_F(CPUTest, OpcodeFX1EAddsVxToI) {
@@ -598,6 +676,26 @@ TEST_F(CPUTest, OpcodeFX55ThenFX65RoundTripsRegisterValues) {
 
 TEST_F(CPUTest, OpcodeFXNNThrowsOnUnknownSubOpcode) {
     EXPECT_THROW(cpu.execute(0xF000, display, keypad), std::invalid_argument);
+}
+
+TEST_F(CPUTest, UpdateTimersDecrementsDelayAndSoundTimers) {
+    cpu.m_delay_timer = 2;
+    cpu.m_sound_timer = 2;
+
+    cpu.updateTimers();
+
+    EXPECT_EQ(cpu.m_delay_timer, 1);
+    EXPECT_EQ(cpu.m_sound_timer, 1);
+}
+
+TEST_F(CPUTest, UpdateTimersDoNotUnderflowPastZero) {
+    cpu.m_delay_timer = 0;
+    cpu.m_sound_timer = 0;
+
+    cpu.updateTimers();
+
+    EXPECT_EQ(cpu.m_delay_timer, 0);
+    EXPECT_EQ(cpu.m_sound_timer, 0);
 }
 
 TEST_F(CPUTest, FetchThrowsWhenOutOfBounds) {
