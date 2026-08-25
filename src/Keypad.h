@@ -2,6 +2,7 @@
 #define CHIP8_EMULATOR_KEYPAD_H
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 class Keypad {
