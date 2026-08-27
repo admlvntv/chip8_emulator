@@ -1,7 +1,7 @@
 #include "CPU.h"
-#include "Keypad.h"
-#include "TerminalDisplay.h"
+#include "SDLDisplay.h"
 
+#include <SDL3/SDL.h>
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
   // Initialize hardware
   CPU cpu;
-  TerminalDisplay display;
+  SDLDisplay display;
   Keypad keypad; // TODO: No input backend yet, keys are never pressed until SDL support added
 
   cpu.load_rom(argv[1]);
@@ -38,7 +38,17 @@ int main(int argc, char* argv[]) {
   auto next_cycle{now};
   auto next_timer{now};
 
-  while (true) {
+  bool running{true};
+  while (running) {
+    // Check if user closed window
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_EVENT_QUIT) {
+        running = false;
+      }
+    }
+    if (!running) break;
+
     // Sleep until the earlier of the two deadlines
     const auto next_deadline{ std::min(next_cycle, next_timer) };
     std::this_thread::sleep_until(next_deadline);
@@ -58,4 +68,6 @@ int main(int argc, char* argv[]) {
       if (next_timer < now) next_timer = now; // resync, drop backlog
     }
   }
+
+  return 0;
 }

@@ -23,6 +23,8 @@ add_executable(chip8_emulator
         src/Keypad.h
         src/TerminalDisplay.cpp
         src/TerminalDisplay.h
+        src/SDLDisplay.cpp
+        src/SDLDisplay.h
 )
 target_link_libraries(chip8_emulator PRIVATE SDL3::SDL3)
 
