@@ -13,7 +13,7 @@
 ### Display
 * **Size**: 64 x 32 pixels monochrome.
 * **Refresh Rate**: 60 Hz.
-* **Implementation**: Currently uses `TerminalDisplay` (ANSI escape codes). Future implementation will use a graphics library (SDL) for Phase 3.
+* **Implementation**: SDL window using rectangles as pixels.
 
 ### Program Counter (PC)
 * **Purpose**: Points to the current instruction in memory.
