@@ -8,12 +8,12 @@
 ### Memory
 * **Size**: 4kB RAM.
 * **Implementation**: `std::array`.
-* **Details**: ROM loads at `0x200` and cuts off at `0xE8F`.
+* **Details**: ROM loads at `0x200`, and the remaining bytes to the end of memory (`0xFFF`) are available to it. `load_rom()` throws if the file is larger than that.
 
 ### Display
 * **Size**: 64 x 32 pixels monochrome.
-* **Refresh Rate**: 60 Hz.
-* **Implementation**: SDL window using rectangles as pixels.
+* **Refresh Rate**: Not decoupled from the CPU, as `render()` is called once per CPU cycle (`main.cpp`'s cycle loop), so the effective refresh rate tracks the configured clock speed rather than a fixed 60 Hz.
+* **Implementation**: `Display` is an abstract base holding the pixel buffer and XOR-drawing logic (`write_pixel`/`get_pixel`) and concrete backends implement `render()`. Two backends exist: `TerminalDisplay` (ANSI escape codes) and `SDLDisplay` (an SDL3 window drawing each set pixel as a filled `SDL_FRect`, scaled by a constructor-configurable factor).
 
 ### Program Counter (PC)
 * **Purpose**: Points to the current instruction in memory.
@@ -37,7 +37,7 @@
 
 ### Variable Registers
 * **Purpose**: 16 8-bit registers numbered `V0` through `VF`. `VF` acts as a flag register for instruction status.
-* **Implementation**: Array of 16 `std::uint8_t` elements (unsigned to handle unsigned overflow, maybe overflow should be implemented by me?).
+* **Implementation**: Array of 16 `std::uint8_t` elements.
 
 ### Fonts
 * **Purpose**: 4x5 pixel sprite data representing hex characters 0 through F.
