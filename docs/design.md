@@ -33,7 +33,7 @@
 
 ### Sound Timer
 * **Purpose**: 8-bit timer that decrements at 60 Hz and makes a beep when value is `0x02` or higher.
-* **Implementation**: `std::uint8_t` decremented inside a loop. Audio generation to be implemented later.
+* **Implementation**: `std::uint8_t` decremented inside a loop. Audio generated as a square wave and is sent to SDL.
 
 ### Variable Registers
 * **Purpose**: 16 8-bit registers numbered `V0` through `VF`. `VF` acts as a flag register for instruction status.

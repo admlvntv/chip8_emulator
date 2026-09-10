@@ -17,6 +17,8 @@ public:
   void cycle(Display& display, const Keypad& keypad); // Main CPU cycle
   void updateTimers(); // Decrements delay and sound timers. Call at 60Hz.
 
+  bool is_sound_playing() const { return m_sound_timer >= 0x02; }
+
 private:
   static constexpr size_t MEMORY_SIZE{4096};
   static constexpr size_t REGISTER_COUNT{16};

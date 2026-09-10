@@ -1,5 +1,6 @@
 #include "CPU.h"
 #include "SDLDisplay.h"
+#include "Speaker.h"
 
 #include <SDL3/SDL.h>
 #include <chrono>
@@ -64,6 +65,7 @@ int main(int argc, char* argv[]) {
   CPU cpu;
   SDLDisplay display;
   Keypad keypad;
+  Speaker speaker;
 
   cpu.load_rom(argv[1]);
 
@@ -107,6 +109,7 @@ int main(int argc, char* argv[]) {
 
     if (now >= next_timer) {
       cpu.updateTimers();
+      speaker.set_playing(cpu.is_sound_playing());
       next_timer += timer_period;
       if (next_timer < now) next_timer = now; // resync, drop backlog
     }

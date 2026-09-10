@@ -25,6 +25,8 @@ add_executable(chip8_emulator
         src/TerminalDisplay.h
         src/SDLDisplay.cpp
         src/SDLDisplay.h
+        src/Speaker.cpp
+        src/Speaker.h
 )
 target_link_libraries(chip8_emulator PRIVATE SDL3::SDL3)
 
